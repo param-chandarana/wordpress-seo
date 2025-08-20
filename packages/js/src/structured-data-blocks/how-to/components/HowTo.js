@@ -349,10 +349,10 @@ export default class HowTo extends Component {
 	}
 
 	/**
-	 * Formats the time in the input fields by removing leading zeros.
+	 * Formats the time in the input fields by accepting input with or without leading zeros.
 	 *
-	 * @param {number} duration    The duration as entered by the user.
-	 * @param {number} maxDuration Optional. The max duration a field can have.
+	 * @param {string|number} duration    The duration as entered by the user.
+	 * @param {number}        maxDuration Optional. The max duration a field can have.
 	 *
 	 * @returns {number} The formatted duration.
 	 */
@@ -361,16 +361,21 @@ export default class HowTo extends Component {
 			return "";
 		}
 
-		const newDuration = duration.replace( /^[0]+/, "" );
-		if ( newDuration === "" ) {
+		// Convert to string to handle both string and number inputs
+		const durationString = String( duration );
+
+		// Parse the integer value directly without removing leading zeros
+		const parsedDuration = parseInt( durationString, 10 );
+		// Handle case where parseInt returns NaN
+		if ( isNaN( parsedDuration ) ) {
 			return 0;
 		}
 
 		if ( maxDuration !== null ) {
-			return Math.min( Math.max( 0, parseInt( newDuration, 10 ) ), maxDuration );
+			return Math.min( Math.max( 0, parsedDuration ), maxDuration );
 		}
 
-		return Math.max( 0, parseInt( newDuration, 10 ) );
+		return Math.max( 0, parsedDuration );
 	}
 
 	/**
