@@ -20,9 +20,7 @@ const EMPTY_TERM_IDS = [];
  */
 function withSelectPropsAreEqual( lastResult, selectedTermIds, primaryTaxonomyId, learnMoreLink ) {
 	return lastResult !== null &&
-		// Object.is is used instead of === to handle NaN correctly: the component constructor
-		// dispatches setPrimaryTaxonomyId with parseInt("", 10) = NaN before the field is set,
-		// and NaN === NaN is false in JS, which would cause the memoization to miss the cache.
+		// Use Object.is for an exact comparison of the memoized primary taxonomy ID.
 		Object.is( primaryTaxonomyId, lastResult.primaryTaxonomyId ) &&
 		learnMoreLink === lastResult.learnMoreLink &&
 		selectedTermIds.length === lastResult.selectedTermIds.length &&
