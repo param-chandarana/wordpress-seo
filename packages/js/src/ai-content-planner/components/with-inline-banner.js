@@ -8,6 +8,7 @@ import { STORE_NAME_AI, STORE_NAME_EDITOR } from "../../ai-generator/constants";
 import { useFetchContentSuggestions } from "../hooks/use-fetch-content-suggestions";
 import { handleBannerKeyNavigation } from "../helpers/handle-banner-tab-navigation";
 import { isObject } from "lodash";
+import { ErrorBoundary } from "@yoast/ui-library";
 
 /**
  * Returns true when the mousedown target is outside the dropdown.
@@ -182,6 +183,7 @@ export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) =
 	}, [ props.clientId ] );
 	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
 	const hasConsent = aiGeneratorSelectors?.selectHasAiGeneratorConsent() ?? false;
+	const BannerFallback = useCallback( () => <BlockListBlock { ...props } />, [ BlockListBlock, props ] );
 
 	// Non-first blocks or missing AI generator selectors: zero additional overhead.
 	if ( ! isFirstBlock || ! isObject( aiGeneratorSelectors ) ) {
@@ -189,5 +191,7 @@ export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) =
 	}
 
 	// Only the first block renders the full component with all subscriptions.
-	return <FirstBlockWithBanner BlockListBlock={ BlockListBlock } props={ props } hasConsent={ hasConsent } />;
+	return <ErrorBoundary FallbackComponent={ BannerFallback }>
+		<FirstBlockWithBanner BlockListBlock={ BlockListBlock } props={ props } hasConsent={ hasConsent } />
+	</ErrorBoundary>;
 }, "withYoastContentPlannerBanner" );

@@ -4,7 +4,8 @@ import { addFilter } from "@wordpress/hooks";
 import domReady from "@wordpress/dom-ready";
 import { useEffect, useRef } from "@wordpress/element";
 import { registerPlugin } from "@wordpress/plugins";
-import { get, isObject } from "lodash";
+import { get, isObject, noop } from "lodash";
+import { ErrorBoundary } from "@yoast/ui-library";
 import { App } from "./components/app";
 import "./blocks/content-suggestion-block";
 import { CONTENT_PLANNER_STORE } from "./constants";
@@ -85,7 +86,7 @@ export const ContentPlannerEditorPlugin = () => {
 	if ( ! isObject( aiGeneratorSelectors ) ) {
 		return null;
 	}
-	return <App hasConsent={ hasConsent } />;
+	return <ErrorBoundary FallbackComponent={ noop }><App hasConsent={ hasConsent } /></ErrorBoundary>;
 };
 
 /**
