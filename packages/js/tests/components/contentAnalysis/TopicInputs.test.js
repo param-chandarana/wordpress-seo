@@ -261,9 +261,7 @@ describe( "TopicInputs", () => {
 
 			const wrapper = modal.parentElement;
 			expect( wrapper ).toHaveClass( "yst-root" );
-			expect( wrapper ).toHaveClass( "yst-flex" );
-			expect( wrapper ).toHaveClass( "yst-flex-col" );
-			expect( wrapper ).toHaveClass( "yst-gap-4" );
+			expect( wrapper ).toHaveClass( "yst-space-y-4" );
 		} );
 
 		it( "renders the SEMrush modal with the metabox location", () => {
@@ -286,9 +284,7 @@ describe( "TopicInputs", () => {
 			const input = document.getElementById( "focus-keyword-input-sidebar" );
 			const wrapper = input.closest( ".yst-root" );
 			expect( wrapper ).toHaveClass( "yst-root" );
-			expect( wrapper ).toHaveClass( "yst-flex" );
-			expect( wrapper ).toHaveClass( "yst-flex-col" );
-			expect( wrapper ).toHaveClass( "yst-gap-4" );
+			expect( wrapper ).toHaveClass( "yst-space-y-4" );
 		} );
 	} );
 

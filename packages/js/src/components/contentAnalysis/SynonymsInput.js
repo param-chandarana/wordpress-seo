@@ -9,7 +9,7 @@ import PropTypes from "prop-types";
  * @param {Object} props The component props.
  * @param {string} props.id The id of the input.
  * @param {string} props.label The label of the input.
- * @param {string} [props.description=""] The description of the input.
+ * @param {string|JSX.Element} [props.description=""] The description of the input.
  * @param {Function} props.onChange The change handler. Receives the raw change event.
  *
  * @returns {JSX.Element} The synonyms input field.
@@ -31,7 +31,10 @@ SynonymsInputField.propTypes = {
 	id: PropTypes.string.isRequired,
 	label: PropTypes.string.isRequired,
 	onChange: PropTypes.func.isRequired,
-	description: PropTypes.string,
+	description: PropTypes.oneOfType( [
+		PropTypes.string,
+		PropTypes.element,
+	] ),
 };
 
 export default SynonymsInputField;

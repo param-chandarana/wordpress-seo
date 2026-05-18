@@ -142,6 +142,7 @@ const TopicInputs = ( {
 	return (
 		<Collapsible
 			id={ `yoast-focus-keyphrase-collapsible-${ location }` }
+			buttonId={ `yoast-focus-keyphrase-collapsible-button-${ location }` }
 			title={ __( "Focus keyphrase", "wordpress-seo" ) }
 			initialIsOpen={ true }
 		>
