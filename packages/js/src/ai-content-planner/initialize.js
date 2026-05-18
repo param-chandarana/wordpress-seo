@@ -69,7 +69,7 @@ export const ContentPlannerEditorPlugin = () => {
 		};
 	}, [] );
 	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
-	const hasConsent = aiGeneratorSelectors?.selectHasAiGeneratorConsent() ?? false;
+	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 
 	const { insertBlock } = useDispatch( "core/block-editor" );
 

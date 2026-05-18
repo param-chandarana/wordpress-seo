@@ -182,7 +182,7 @@ export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) =
 		return select( "core/block-editor" ).getBlockOrder()[ 0 ] === props.clientId;
 	}, [ props.clientId ] );
 	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
-	const hasConsent = aiGeneratorSelectors?.selectHasAiGeneratorConsent() ?? false;
+	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 	const BannerFallback = useCallback( () => <BlockListBlock { ...props } />, [ BlockListBlock, props ] );
 
 	// Non-first blocks or missing AI generator selectors: zero additional overhead.
