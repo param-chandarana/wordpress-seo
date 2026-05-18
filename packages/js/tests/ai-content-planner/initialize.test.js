@@ -88,7 +88,7 @@ jest.mock( "../../src/ai-content-planner/components/inline-banner", () => ( {
 } ) );
 
 jest.mock( "../../src/ai-content-planner/components/app", () => ( {
-	// eslint-disable-next-line react/prop-types
+
 	App: ( { hasConsent } ) => <div data-testid="app" data-has-consent={ String( hasConsent ) } />,
 } ) );
 
