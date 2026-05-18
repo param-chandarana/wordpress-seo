@@ -45,6 +45,59 @@ describe( "The PrePublish container", () => {
 		expect( second.checklist ).not.toBe( first.checklist );
 	} );
 
+	it( "returns the same isSeoDataDefault reference when the default-state booleans are unchanged", () => {
+		const select = mockSelectors();
+
+		const first = mapSelectToProps( select );
+		const second = mapSelectToProps( select );
+
+		expect( second.isSeoDataDefault ).toBe( first.isSeoDataDefault );
+	} );
+
+	it( "returns a new isSeoDataDefault reference when isAllTitlesDefault changes", () => {
+		const selectA = mockSelectors();
+
+		const selectB = mockSelectors();
+		selectB( "yoast-seo/editor" ).getPreferences.mockReturnValue( {
+			isKeywordAnalysisActive: true,
+			isContentAnalysisActive: true,
+			isRecentTitlesDefault: true,
+		} );
+		selectB( "yoast-seo/editor" ).getSnippetEditorData.mockReturnValue( {
+			title: "title template",
+			description: "",
+			slug: "",
+		} );
+
+		const first = mapSelectToProps( selectA );
+		const second = mapSelectToProps( selectB );
+
+		expect( second.isSeoDataDefault ).not.toBe( first.isSeoDataDefault );
+		expect( second.isSeoDataDefault.isAllTitlesDefault ).toBe( true );
+	} );
+
+	it( "returns a new isSeoDataDefault reference when isAllDescriptionsDefault changes", () => {
+		const selectA = mockSelectors();
+
+		const selectB = mockSelectors();
+		selectB( "yoast-seo/editor" ).getPreferences.mockReturnValue( {
+			isKeywordAnalysisActive: true,
+			isContentAnalysisActive: true,
+			isRecentDescriptionsDefault: true,
+		} );
+		selectB( "yoast-seo/editor" ).getSnippetEditorData.mockReturnValue( {
+			title: "",
+			description: "description template",
+			slug: "",
+		} );
+
+		const first = mapSelectToProps( selectA );
+		const second = mapSelectToProps( selectB );
+
+		expect( second.isSeoDataDefault ).not.toBe( first.isSeoDataDefault );
+		expect( second.isSeoDataDefault.isAllDescriptionsDefault ).toBe( true );
+	} );
+
 	it( "maps the dispatch function to props", () => {
 		const dispatchers = {
 			closePublishSidebar: jest.fn(),
