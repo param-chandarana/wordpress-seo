@@ -374,6 +374,9 @@ final class MyYoast_Client_Test extends TestCase {
 			->once()
 			->andReturn( null );
 
+		$this->client_registration->expects( 'is_registered' )->once()->andReturn( true );
+		$this->client_registration->shouldNotReceive( 'ensure_registered' );
+
 		$fresh = new Token_Set( 'new-site-token', ( \time() + 900 ) );
 
 		$this->grant_handler
@@ -516,6 +519,9 @@ final class MyYoast_Client_Test extends TestCase {
 			->once()
 			->andReturn( $cached );
 
+		$this->client_registration->expects( 'is_registered' )->once()->andReturn( true );
+		$this->client_registration->shouldNotReceive( 'ensure_registered' );
+
 		$fresh = new Token_Set( 'new-token', ( \time() + 900 ), 'DPoP', null, null, 'service:licenses:read service:subscriptions:read' );
 
 		$this->grant_handler
@@ -530,6 +536,34 @@ final class MyYoast_Client_Test extends TestCase {
 		$result = $this->instance->get_site_token( [ 'service:subscriptions:read' ] );
 
 		$this->assertSame( 'new-token', $result->get_access_token() );
+	}
+
+	/**
+	 * Tests that get_site_token refuses to issue a token when the site isn't registered with MyYoast.
+	 * Registration is a precondition handled by the user-driven connect flow; this method never
+	 * triggers DCR on its own. Callers (e.g. the AI auth sender) see a typed Token_Request_Failed
+	 * with `not_registered` and fall back accordingly.
+	 *
+	 * @covers ::get_site_token
+	 *
+	 * @return void
+	 */
+	public function test_get_site_token_throws_when_site_not_registered() {
+		$this->token_storage->expects( 'get' )->once()->andReturn( null );
+
+		$this->client_registration->expects( 'is_registered' )->once()->andReturn( false );
+		$this->client_registration->shouldNotReceive( 'ensure_registered' );
+
+		$this->grant_handler->shouldNotReceive( 'request_token' );
+		$this->token_storage->shouldNotReceive( 'store' );
+
+		try {
+			$this->instance->get_site_token();
+			$this->fail( 'Expected Token_Request_Failed_Exception.' );
+		}
+		catch ( Token_Request_Failed_Exception $exception ) {
+			$this->assertSame( 'not_registered', $exception->get_error_code() );
+		}
 	}
 
 	/**

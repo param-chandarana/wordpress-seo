@@ -13,7 +13,6 @@ use Yoast\WP\SEO\AI\Authentication\Application\OAuth_Auth_Strategy;
 use Yoast\WP\SEO\AI\Authentication\Application\Token_Auth_Strategy;
 use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
-use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
 /**
@@ -38,13 +37,6 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	 * @var Mockery\MockInterface|MyYoast_Connection_Conditional
 	 */
 	private $conditional;
-
-	/**
-	 * The MyYoast client mock.
-	 *
-	 * @var Mockery\MockInterface|MyYoast_Client
-	 */
-	private $myyoast_client;
 
 	/**
 	 * The OAuth strategy mock.
@@ -84,7 +76,6 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 
 		$this->request_handler = Mockery::mock( Request_Handler::class );
 		$this->conditional     = Mockery::mock( MyYoast_Connection_Conditional::class );
-		$this->myyoast_client  = Mockery::mock( MyYoast_Client::class );
 		$this->oauth_strategy  = Mockery::mock( OAuth_Auth_Strategy::class );
 		$this->token_strategy  = Mockery::mock( Token_Auth_Strategy::class );
 
@@ -94,7 +85,6 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 		$this->instance = new AI_Request_Sender_Factory(
 			$this->request_handler,
 			$this->conditional,
-			$this->myyoast_client,
 			$this->oauth_strategy,
 			$this->token_strategy,
 		);
@@ -109,7 +99,6 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	 */
 	public function test_create_returns_token_only_sender_when_feature_flag_off(): void {
 		$this->conditional->expects( 'is_met' )->andReturn( false );
-		$this->myyoast_client->shouldNotReceive( 'is_registered' );
 
 		$sender = $this->instance->create( $this->user );
 
@@ -119,52 +108,16 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	}
 
 	/**
-	 * MyYoast client not registered: Token primary, no fallback.
+	 * Feature flag on: returns a sender with OAuth as primary and Token as fallback. Registration
+	 * is no longer gated at selection time — get_site_token auto-registers on demand, and the sender
+	 * falls back to Token if OAuth setup or dispatch fails.
 	 *
 	 * @covers ::create
 	 *
 	 * @return void
 	 */
-	public function test_create_returns_token_only_sender_when_not_registered(): void {
+	public function test_create_returns_oauth_with_token_fallback_when_feature_flag_on(): void {
 		$this->conditional->expects( 'is_met' )->andReturn( true );
-		$this->myyoast_client->expects( 'is_registered' )->andReturn( false );
-		$this->myyoast_client->shouldNotReceive( 'has_any_user_token' );
-
-		$sender = $this->instance->create( $this->user );
-
-		$this->assertSame( $this->token_strategy, $this->getPropertyValue( $sender, 'primary' ) );
-		$this->assertNull( $this->getPropertyValue( $sender, 'fallback' ) );
-	}
-
-	/**
-	 * No user has connected yet (site-wide flag is false): Token primary, no fallback.
-	 *
-	 * @covers ::create
-	 *
-	 * @return void
-	 */
-	public function test_create_returns_token_only_sender_when_no_user_token(): void {
-		$this->conditional->expects( 'is_met' )->andReturn( true );
-		$this->myyoast_client->expects( 'is_registered' )->andReturn( true );
-		$this->myyoast_client->expects( 'has_any_user_token' )->andReturn( false );
-
-		$sender = $this->instance->create( $this->user );
-
-		$this->assertSame( $this->token_strategy, $this->getPropertyValue( $sender, 'primary' ) );
-		$this->assertNull( $this->getPropertyValue( $sender, 'fallback' ) );
-	}
-
-	/**
-	 * All gates pass: OAuth primary, Token fallback.
-	 *
-	 * @covers ::create
-	 *
-	 * @return void
-	 */
-	public function test_create_returns_oauth_with_token_fallback_when_all_gates_pass(): void {
-		$this->conditional->expects( 'is_met' )->andReturn( true );
-		$this->myyoast_client->expects( 'is_registered' )->andReturn( true );
-		$this->myyoast_client->expects( 'has_any_user_token' )->andReturn( true );
 
 		$sender = $this->instance->create( $this->user );
 
@@ -173,7 +126,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	}
 
 	/**
-	 * Filter pinning 'oauth' bypasses the other gates and returns OAuth + Token fallback.
+	 * Filter pinning 'oauth' bypasses the feature-flag check and returns OAuth + Token fallback.
 	 *
 	 * @covers ::create
 	 *
@@ -182,7 +135,6 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	public function test_filter_can_pin_oauth(): void {
 		Monkey\Filters\expectApplied( 'wpseo_ai_auth_method' )->andReturn( 'oauth' );
 		$this->conditional->shouldNotReceive( 'is_met' );
-		$this->myyoast_client->shouldNotReceive( 'is_registered' );
 
 		$sender = $this->instance->create( $this->user );
 
@@ -191,7 +143,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	}
 
 	/**
-	 * Filter pinning 'token' bypasses the other gates and returns Token only.
+	 * Filter pinning 'token' bypasses the feature-flag check and returns Token only.
 	 *
 	 * @covers ::create
 	 *

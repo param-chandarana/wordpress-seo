@@ -8,7 +8,6 @@ use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Domain\Auth_Method;
 use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
-use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client;
 use YoastSEO_Vendor\Psr\Log\LoggerAwareInterface;
 use YoastSEO_Vendor\Psr\Log\LoggerAwareTrait;
 use YoastSEO_Vendor\Psr\Log\NullLogger;
@@ -40,13 +39,6 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	private $myyoast_connection_conditional;
 
 	/**
-	 * The MyYoast OAuth client.
-	 *
-	 * @var MyYoast_Client
-	 */
-	private $myyoast_client;
-
-	/**
 	 * The OAuth strategy.
 	 *
 	 * @var OAuth_Auth_Strategy
@@ -65,20 +57,17 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	 *
 	 * @param Request_Handler                $request_handler                The AI request handler.
 	 * @param MyYoast_Connection_Conditional $myyoast_connection_conditional The MyYoast connection feature flag.
-	 * @param MyYoast_Client                 $myyoast_client                 The MyYoast OAuth client.
 	 * @param OAuth_Auth_Strategy            $oauth_strategy                 The OAuth strategy.
 	 * @param Token_Auth_Strategy            $token_strategy                 The Token strategy.
 	 */
 	public function __construct(
 		Request_Handler $request_handler,
 		MyYoast_Connection_Conditional $myyoast_connection_conditional,
-		MyYoast_Client $myyoast_client,
 		OAuth_Auth_Strategy $oauth_strategy,
 		Token_Auth_Strategy $token_strategy
 	) {
 		$this->request_handler                = $request_handler;
 		$this->myyoast_connection_conditional = $myyoast_connection_conditional;
-		$this->myyoast_client                 = $myyoast_client;
 		$this->oauth_strategy                 = $oauth_strategy;
 		$this->token_strategy                 = $token_strategy;
 		$this->logger                         = new NullLogger();
@@ -121,17 +110,7 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 			return false;
 		}
 
-		if ( ! $this->myyoast_client->is_registered() ) {
-			$this->logger->debug( 'AI auth: routing to token strategy (MyYoast OAuth client not registered).' );
-			return false;
-		}
-
-		if ( ! $this->myyoast_client->has_any_user_token() ) {
-			$this->logger->debug( 'AI auth: routing to token strategy (no user has completed auth-code flow on this site yet).' );
-			return false;
-		}
-
-		$this->logger->debug( 'AI auth: routing to oauth strategy (all gates passed).' );
+		$this->logger->debug( 'AI auth: routing to oauth strategy (feature flag on).' );
 		return true;
 	}
 

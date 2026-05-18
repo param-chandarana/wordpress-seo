@@ -115,6 +115,14 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	 * @return Response The parsed response.
 	 */
 	private function dispatch_with( Auth_Strategy_Interface $strategy, Request $request, WP_User $user ): Response {
+		$this->logger->debug(
+			'AI request: dispatching {path} via {strategy}.',
+			[
+				'path'     => $request->get_action_path(),
+				'strategy' => \get_class( $strategy ),
+			],
+		);
+
 		for ( $attempt = 1; $attempt <= self::MAX_ATTEMPTS; ++$attempt ) {
 			try {
 				return $this->request_handler->handle( $strategy->decorate( $request, $user ) );

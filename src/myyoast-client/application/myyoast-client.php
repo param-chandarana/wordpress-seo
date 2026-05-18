@@ -258,6 +258,8 @@ class MyYoast_Client implements LoggerAwareInterface {
 		return $token_set;
 	}
 
+	// phpcs:disable Squiz.Commenting.FunctionCommentThrowTag.WrongNumber -- Token_Storage_Exception is thrown by an injected service, not directly here.
+
 	/**
 	 * Returns a valid site-level access token (client_credentials).
 	 *
@@ -265,21 +267,33 @@ class MyYoast_Client implements LoggerAwareInterface {
 	 *
 	 * @return Token_Set The site-level token set.
 	 *
-	 * @throws Token_Request_Failed_Exception If the token request fails.
+	 * @throws Token_Request_Failed_Exception If the site is not registered or the token request fails.
 	 * @throws Token_Storage_Exception        If encrypting the token set for storage fails.
 	 */
 	public function get_site_token( array $scopes = [] ): Token_Set {
 		$cached = $this->token_storage->get();
 		if ( $cached !== null && ! $cached->is_expired() && $cached->has_scopes( $scopes ) ) {
+			$this->logger->debug( 'MyYoast site token: cache hit; reusing cached token (scopes: {scopes}).', [ 'scopes' => \implode( ' ', $scopes ) ] );
 			return $cached;
 		}
+		$this->logger->debug( 'MyYoast site token: cache miss; preparing to request a fresh token (scopes: {scopes}).', [ 'scopes' => \implode( ' ', $scopes ) ] );
+
+		if ( ! $this->is_registered() ) {
+			$this->logger->debug( 'MyYoast site token: site not registered; refusing to request a token. Run the connect flow first.' );
+			throw new Token_Request_Failed_Exception( 'not_registered', 'Site is not registered with MyYoast; complete the connect flow first.' );
+		}
+		$this->logger->debug( 'MyYoast site token: site already registered; proceeding with token request.' );
 
 		$grant     = new Client_Credentials_Grant( $scopes, $this->site_url_provider->get() );
 		$token_set = $this->grant_handler->request_token( $grant );
 		$this->token_storage->store( $token_set );
 
+		$this->logger->debug( 'MyYoast site token: fresh token issued and cached.' );
+
 		return $token_set;
 	}
+
+	// phpcs:enable Squiz.Commenting.FunctionCommentThrowTag.WrongNumber
 
 	/**
 	 * Returns a valid user-level access token, auto-refreshing if expired.
