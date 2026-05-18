@@ -35,8 +35,8 @@ const makeMapSelectToProps = () => {
 			checklist.length === lastChecklist.length &&
 			checklist.every( ( item, i ) =>
 				item.label === lastChecklist[ i ].label &&
-			item.score === lastChecklist[ i ].score &&
-			item.scoreValue === lastChecklist[ i ].scoreValue
+				item.score === lastChecklist[ i ].score &&
+				item.scoreValue === lastChecklist[ i ].scoreValue
 			)
 		) {
 			return { checklist: lastChecklist };
