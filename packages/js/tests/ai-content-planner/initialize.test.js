@@ -36,6 +36,9 @@ jest.mock( "@wordpress/data", () => ( {
 					getBlocks: () => [],
 				};
 			}
+			if ( storeName === "yoast-seo/editor" ) {
+				return { getSnippetEditorTemplates: () => ( { title: "", description: "" } ) };
+			}
 			return {};
 		};
 		return mapSelect( mockSelect );
@@ -126,6 +129,9 @@ describe( "ContentPlannerEditorPlugin", () => {
 				if ( storeName === "core/block-editor" ) {
 					return { getBlocks: () => [] };
 				}
+				if ( storeName === "yoast-seo/editor" ) {
+					return { getSnippetEditorTemplates: () => ( { title: "", description: "" } ) };
+				}
 				return {};
 			};
 			return mapSelect( mockSelect );
@@ -159,6 +165,9 @@ describe( "ContentPlannerEditorPlugin", () => {
 				}
 				if ( storeName === "core/block-editor" ) {
 					return { getBlocks: () => [] };
+				}
+				if ( storeName === "yoast-seo/editor" ) {
+					return { getSnippetEditorTemplates: () => ( { title: "", description: "" } ) };
 				}
 				return {};
 			};
