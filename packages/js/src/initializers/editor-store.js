@@ -45,11 +45,8 @@ const populateStore = store => {
 	store.dispatch( actions.setWistiaEmbedPermissionValue( get( window, "wpseoScriptData.wistiaEmbedPermission", false ) === "1" ) );
 	store.dispatch( actions.loadSnippetEditorData(
 		{
-			data: {
-				title: "",
-				description: "",
-				slug: "",
-			},
+			// The post scraper will update the data later. This prevents throwing errors for missing data in the meantime.
+			data: { title: "", description: "", slug: "" },
 			templates: {
 				title: get( window, "wpseoScriptData.metabox.title_template", "" ),
 				description: get( window, "wpseoScriptData.metabox.metadesc_template", "" ),
