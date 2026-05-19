@@ -7,17 +7,31 @@ jest.mock( "@wordpress/data", () => ( {
 		updateData: jest.fn(),
 		setFocusKeyword: jest.fn(),
 	} ) ),
-	useSelect: jest.fn( () => ( {
-		isNewPost: false,
-		postType: "post",
-		blocks: [],
-		minPostsMet: false,
-		isBannerRendered: false,
-		yoastTitle: "",
-		yoastMetaDesc: "",
-		yoastFocusKw: "",
+	useSelect: jest.fn( ( selector ) => selector( ( storeName ) => {
+		if ( storeName === "core/editor" ) {
+			return {
+				getEditedPostAttribute: () => ( {} ),
+				getCurrentPostType: () => "post",
+				isEditedPostNew: () => false,
+			};
+		}
+		if ( storeName === "core/block-editor" ) {
+			return { getBlocks: () => [] };
+		}
+		if ( storeName === "yoast-seo/editor" ) {
+			return { getSnippetEditorTemplates: () => ( { title: "", description: "" } ) };
+		}
+		// Content planner store and any other store.
+		return {
+			selectIsMinPostsMet: () => false,
+			selectIsBannerRendered: () => false,
+		};
 	} ) ),
-	useDispatch: jest.fn( () => ( { insertBlock: jest.fn() } ) ),
+	useDispatch: jest.fn( () => ( {
+		insertBlock: jest.fn(),
+		updateData: jest.fn(),
+		setFocusKeyword: jest.fn(),
+	} ) ),
 	select: jest.fn( () => ( {
 		getBlocks: () => [],
 		isEditedPostNew: () => true,
