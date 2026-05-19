@@ -1,4 +1,4 @@
-import { TextField } from "@yoast/ui-library";
+import { Root, TextField } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 
 /**
@@ -15,7 +15,7 @@ import PropTypes from "prop-types";
  * @returns {JSX.Element} The related keyphrase input field.
  */
 const RelatedKeyphraseInputField = ( { id, label, description = "", onChange, ...inputProps } ) => (
-	<div className="yst-root">
+	<Root>
 		<TextField
 			id={ id }
 			label={ label }
@@ -24,7 +24,7 @@ const RelatedKeyphraseInputField = ( { id, label, description = "", onChange, ..
 			description={ description }
 			{ ...inputProps }
 		/>
-	</div>
+	</Root>
 );
 
 RelatedKeyphraseInputField.propTypes = {
