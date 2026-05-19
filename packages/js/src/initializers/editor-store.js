@@ -43,6 +43,19 @@ const populateStore = store => {
 	store.dispatch( actions.setLinkParams( get( window, "wpseoScriptData.linkParams", {} ) ) );
 	store.dispatch( actions.setPluginUrl( get( window, "wpseoScriptData.pluginUrl", "" ) ) );
 	store.dispatch( actions.setWistiaEmbedPermissionValue( get( window, "wpseoScriptData.wistiaEmbedPermission", false ) === "1" ) );
+	store.dispatch( actions.loadSnippetEditorData(
+		{
+			data: {
+				title: "",
+				description: "",
+				slug: "",
+			},
+			templates: {
+				title: get( window, "wpseoScriptData.metabox.title_template", "" ),
+				description: get( window, "wpseoScriptData.metabox.metadesc_template", "" ),
+			},
+		}
+	) );
 };
 
 /**
