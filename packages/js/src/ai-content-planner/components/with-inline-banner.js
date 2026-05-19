@@ -6,6 +6,8 @@ import { CONTENT_PLANNER_STORE, FEATURE_MODAL_STATUS, INJECTED_STYLE_ID } from "
 import { STORE_NAME_AI, STORE_NAME_EDITOR } from "../../ai-generator/constants";
 import { useFetchContentSuggestions } from "../hooks/use-fetch-content-suggestions";
 import { handleBannerKeyNavigation } from "../helpers/handle-banner-tab-navigation";
+import { isObject } from "lodash";
+import { ErrorBoundary } from "@yoast/ui-library";
 
 /**
  * Returns true when the mousedown target is outside the dropdown.
@@ -26,12 +28,13 @@ function isClickOutsideDropdown( bannerEl, event ) {
  * The component that conditionally renders the Content Planner inline banner and injects the Tailwind stylesheet into the editor iframe.
  * @param {Function}   BlockListBlock The Gutenberg block component to wrap.
  * @param {Object}   props The block props passed by Gutenberg.
+ * @param {boolean}  hasConsent Whether the user has granted consent for AI-generated content.
  * @returns {JSX.Element} The wrapped block component with the inline banner conditionally rendered before it.
  */
-const FirstBlockWithBanner = ( { BlockListBlock, props } ) => {
+const FirstBlockWithBanner = ( { BlockListBlock, props, hasConsent } ) => {
 	const {
 		isNewPost, isBannerDismissed, isBannerRendered, isBannerPermanentlyDismissed,
-		bannerPermanentDismissalEndpoint, hasConsent, isPremium, minPostsMet, learnMoreLink,
+		bannerPermanentDismissalEndpoint, isPremium, minPostsMet, learnMoreLink,
 	} = useSelect( ( select ) => {
 		const planner = select( CONTENT_PLANNER_STORE );
 		return {
@@ -41,7 +44,6 @@ const FirstBlockWithBanner = ( { BlockListBlock, props } ) => {
 			isBannerPermanentlyDismissed: planner.selectIsBannerPermanentlyDismissed(),
 			bannerPermanentDismissalEndpoint: planner.selectBannerPermanentDismissalEndpoint(),
 			isPremium: select( STORE_NAME_EDITOR ).getIsPremium(),
-			hasConsent: select( STORE_NAME_AI ).selectHasAiGeneratorConsent(),
 			minPostsMet: select( CONTENT_PLANNER_STORE ).selectIsMinPostsMet(),
 			learnMoreLink: select( STORE_NAME_EDITOR ).selectLink( "https://yoa.st/content-planner-learn-more" ),
 		};
@@ -178,12 +180,17 @@ export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) =
 	const isFirstBlock = useSelect( ( select ) => {
 		return select( "core/block-editor" ).getBlockOrder()[ 0 ] === props.clientId;
 	}, [ props.clientId ] );
+	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
+	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
+	const BannerFallback = useCallback( () => <BlockListBlock { ...props } />, [ BlockListBlock, props ] );
 
-	// Non-first blocks: zero additional overhead.
-	if ( ! isFirstBlock ) {
+	// Non-first blocks or missing AI generator selectors: zero additional overhead.
+	if ( ! isFirstBlock || ! isObject( aiGeneratorSelectors ) ) {
 		return <BlockListBlock { ...props } />;
 	}
 
 	// Only the first block renders the full component with all subscriptions.
-	return <FirstBlockWithBanner BlockListBlock={ BlockListBlock } props={ props } />;
+	return <ErrorBoundary FallbackComponent={ BannerFallback }>
+		<FirstBlockWithBanner BlockListBlock={ BlockListBlock } props={ props } hasConsent={ hasConsent } />
+	</ErrorBoundary>;
 }, "withYoastContentPlannerBanner" );
