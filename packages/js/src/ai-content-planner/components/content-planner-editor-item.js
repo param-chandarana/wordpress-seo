@@ -22,7 +22,7 @@ export const ContentPlannerEditorItem = ( { location, setFeatureModalStatus } ) 
 	const helperTextId = "yoast-content-planner-min-posts-notice-" + location;
 
 	return <Root><div
-		className={ location === "metabox" ? "yst-flex yst-items-center yst-gap-3" : null }
+		className={ classNames( location === "metabox" && "yst-flex yst-items-center yst-gap-3" ) }
 	>
 		<Button
 			variant="ai-secondary"

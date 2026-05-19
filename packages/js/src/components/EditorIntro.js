@@ -6,7 +6,7 @@ import classNames from "classnames";
  * The introduction component for the editor.
  *
  * @param {Object} props The component props.
- * @param {string} props.children The children to render inside the component.
+ * @param {React.ReactNode} props.children The children to render inside the component.
  * @returns {JSX.Element} The editor introduction component.
  */
 export const EditorIntro = ( { children } ) => {
@@ -30,5 +30,3 @@ export const EditorIntroText = ( { withPromptForContentSuggestions, className } 
 			: __( "Optimize your content for discovery.", "wordpress-seo" ) }
 	</p>;
 };
-
-

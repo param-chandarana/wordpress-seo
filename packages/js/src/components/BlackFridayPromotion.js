@@ -50,7 +50,7 @@ export const BlackFridayPromotion = ( {
 						"yst-border yst-rounded-lg yst-p-4 yst-max-w-md yst-relative yst-shadow-sm yst-mt-2",
 						isWooCommerceActive ? "yst-border-woo-light" : "yst-border-primary-200" ) }
 			>
-				<Badge size="small"className="yst-text-[10px] yst-bg-black yst-text-amber-300 yst-absolute yst--top-2">
+				<Badge size="small" className="yst-text-[10px] yst-bg-black yst-text-amber-300 yst-absolute yst--top-2">
 					{ __( "BLACK FRIDAY", "wordpress-seo" ) } </Badge>
 				<button className="yst-absolute yst-top-4 yst-end-4" onClick={ onDismiss }>
 					<XIcon className="yst-w-4 yst-text-slate-400 yst-shrink-0 yst--mt-0.5" />
