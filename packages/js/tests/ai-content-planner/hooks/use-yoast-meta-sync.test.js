@@ -35,13 +35,31 @@ beforeEach( () => {
 } );
 
 describe( "useYoastMetaSync", () => {
-	it( "calls updateData with title and description from meta", () => {
+	it( "calls updateData with title and description from meta when both are non-empty", () => {
 		// eslint-disable-next-line camelcase
 		setupUseSelect( { _yoast_wpseo_title: "My title", _yoast_wpseo_metadesc: "My desc" } );
 
 		renderHook( () => useYoastMetaSync() );
 
 		expect( mockUpdateData ).toHaveBeenCalledWith( { title: "My title", description: "My desc" } );
+	} );
+
+	it( "calls updateData with only title when description is empty", () => {
+		// eslint-disable-next-line camelcase
+		setupUseSelect( { _yoast_wpseo_title: "My title", _yoast_wpseo_metadesc: "" } );
+
+		renderHook( () => useYoastMetaSync() );
+
+		expect( mockUpdateData ).toHaveBeenCalledWith( { title: "My title" } );
+	} );
+
+	it( "calls updateData with only description when title is empty", () => {
+		// eslint-disable-next-line camelcase
+		setupUseSelect( { _yoast_wpseo_title: "", _yoast_wpseo_metadesc: "My desc" } );
+
+		renderHook( () => useYoastMetaSync() );
+
+		expect( mockUpdateData ).toHaveBeenCalledWith( { description: "My desc" } );
 	} );
 
 	it( "calls setFocusKeyword with the focus keyword from meta", () => {
@@ -53,11 +71,23 @@ describe( "useYoastMetaSync", () => {
 		expect( mockSetFocusKeyword ).toHaveBeenCalledWith( "my keyword" );
 	} );
 
-	it( "passes undefined when meta fields are absent on a post", () => {
+	it( "does not dispatch when meta fields are absent on a post", () => {
 		renderHook( () => useYoastMetaSync() );
 
-		expect( mockUpdateData ).toHaveBeenCalledWith( { title: undefined, description: undefined } );
-		expect( mockSetFocusKeyword ).toHaveBeenCalledWith( undefined );
+		expect( mockUpdateData ).not.toHaveBeenCalled();
+		expect( mockSetFocusKeyword ).not.toHaveBeenCalled();
+	} );
+
+	it( "does not dispatch when meta fields are empty strings (REST API default when no custom value is saved)", () => {
+		// The REST API returns "" for registered meta keys that have no saved value.
+		// Dispatching an empty string would overwrite the SEO title template in the snippet editor.
+		// eslint-disable-next-line camelcase
+		setupUseSelect( { _yoast_wpseo_title: "", _yoast_wpseo_metadesc: "", _yoast_wpseo_focuskw: "" } );
+
+		renderHook( () => useYoastMetaSync() );
+
+		expect( mockUpdateData ).not.toHaveBeenCalled();
+		expect( mockSetFocusKeyword ).not.toHaveBeenCalled();
 	} );
 
 	it( "does not dispatch when the post type is not 'post'", () => {

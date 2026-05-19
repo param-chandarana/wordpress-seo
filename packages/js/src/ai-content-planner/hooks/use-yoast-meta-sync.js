@@ -25,6 +25,7 @@ export function useYoastMetaSync() {
 		};
 	}, [] );
 
+	// eslint-disable-next-line complexity
 	useEffect( () => {
 		// These meta keys are only registered for the 'post' subtype; bail on all other post types
 		// to avoid dispatching undefined values into yoast-seo/editor.
@@ -32,7 +33,21 @@ export function useYoastMetaSync() {
 			return;
 		}
 		const yoastEditor = dispatch( "yoast-seo/editor" );
-		yoastEditor?.updateData?.( { title: yoastTitle, description: yoastMetaDesc } );
-		yoastEditor?.setFocusKeyword?.( yoastFocusKw );
+		// Only sync non-empty values. An empty string means no custom value has been saved, in
+		// which case the snippet editor should keep showing the SEO title template instead of
+		// being overwritten with an empty string.
+		const dataToSync = {};
+		if ( yoastTitle ) {
+			dataToSync.title = yoastTitle;
+		}
+		if ( yoastMetaDesc ) {
+			dataToSync.description = yoastMetaDesc;
+		}
+		if ( Object.keys( dataToSync ).length > 0 ) {
+			yoastEditor?.updateData?.( dataToSync );
+		}
+		if ( yoastFocusKw ) {
+			yoastEditor?.setFocusKeyword?.( yoastFocusKw );
+		}
 	}, [ isPost, yoastTitle, yoastMetaDesc, yoastFocusKw ] );
 }
