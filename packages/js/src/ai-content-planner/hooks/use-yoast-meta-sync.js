@@ -7,10 +7,6 @@ import { useEffect } from "@wordpress/element";
  * Direct sidebar edits (yoast-seo/editor only) will be overwritten if core/editor meta
  * changes afterwards — accepted trade-off for correct undo behaviour.
  *
- * dispatch() is called inside the effect (not via useDispatch) because yoast-seo/editor
- * is registered after the Gutenberg store and may not be available at component mount;
- * resolving it lazily avoids the need for a conditional hook.
- *
  * @returns {void}
  */
 export function useYoastMetaSync() {
