@@ -1,4 +1,4 @@
-const { resolve } = require( "path" );
+const { resolve, dirname } = require( "path" );
 const DependencyExtractionWebpackPlugin = require( "@wordpress/dependency-extraction-webpack-plugin" );
 const defaultConfig = require( "@wordpress/scripts/config/webpack.config" );
 const MiniCssExtractPlugin = require( "mini-css-extract-plugin" );
@@ -14,7 +14,7 @@ module.exports = function( { entry, output, combinedOutputFile, cssExtractFileNa
 			...defaultConfig.resolve,
 			alias: {
 				...defaultConfig.resolve?.alias,
-				"@emotion/react": resolve( __dirname, "../../node_modules/@emotion/react" ),
+				"@emotion/react": dirname( require.resolve( "@emotion/react/package.json" ) ),
 			},
 		},
 		optimization: {
