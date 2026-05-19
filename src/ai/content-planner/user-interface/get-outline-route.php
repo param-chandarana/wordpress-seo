@@ -140,7 +140,23 @@ class Get_Outline_Route implements Route_Interface {
 					'recent_content'   => [
 						'required'    => true,
 						'type'        => 'array',
-						'items'       => [ 'type' => 'object' ],
+						'maxItems'    => 100,
+						'items'       => [
+							'type'                 => 'object',
+							'required'             => [
+								'title',
+								'description',
+							],
+							'properties'           => [
+								'title'       => [
+									'type' => 'string',
+								],
+								'description' => [
+									'type' => 'string',
+								],
+							],
+							'additionalProperties' => false,
+						],
 						'description' => 'The recent content returned by the get_suggestions response.',
 					],
 				],
