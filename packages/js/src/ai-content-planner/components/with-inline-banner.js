@@ -178,13 +178,15 @@ const FirstBlockWithBanner = ( { BlockListBlock, props, hasConsent } ) => {
  */
 export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) => function WithInlineBanner( props ) {
 	const { isFirstBlock, isEditingTemplate } = useSelect( ( select ) => {
-		const postType = select( "core/editor" ).getCurrentPostType();
+		const editor = select( "core/editor" );
+		const postType = editor.getCurrentPostType();
 		return {
 			// getBlockOrder() with no arguments returns root-level block IDs only, so nested
 			// blocks (inside core/query, core/comment-template, etc.) never match here.
 			isFirstBlock: select( "core/block-editor" ).getBlockOrder()[ 0 ] === props.clientId,
-			// Banner should not appear when editing a template or template part in the Site Editor.
-			isEditingTemplate: postType === "wp_template" || postType === "wp_template_part",
+			// Banner should not appear when editing a template or template part in the Site Editor,
+			// or when template-locked mode is active (Settings > Template > Show template in the post editor).
+			isEditingTemplate: postType === "wp_template" || postType === "wp_template_part" || editor.getRenderingMode() === "template-locked",
 		};
 	}, [ props.clientId ] );
 	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );

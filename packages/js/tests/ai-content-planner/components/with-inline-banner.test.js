@@ -125,6 +125,7 @@ const mockDismissBannerPermanently = jest.fn();
  * @param {boolean} [overrides.isFirstBlock=true]         Whether the rendered block is the first in the canvas.
  * @param {boolean} [overrides.isNewPost=true]            Whether the post is new (not yet saved).
  * @param {string}  [overrides.postType="post"]           The current post type (e.g. "post", "wp_template").
+ * @param {string}  [overrides.renderingMode="post-only"] The editor rendering mode (e.g. "post-only", "template-locked").
  * @param {boolean} [overrides.isBannerDismissed=false]   Whether the banner has been dismissed for this session.
  * @param {boolean} [overrides.isBannerPermanentlyDismissed=false] Whether the banner has been permanently dismissed.
  * @param {boolean} [overrides.isBannerRendered=false]    Whether the banner has been persisted to the post meta.
@@ -139,6 +140,7 @@ const setupMocks = ( overrides = {} ) => {
 		isFirstBlock: true,
 		isNewPost: true,
 		postType: "post",
+		renderingMode: "post-only",
 		isBannerDismissed: false,
 		isBannerPermanentlyDismissed: false,
 		isBannerRendered: false,
@@ -155,7 +157,11 @@ const setupMocks = ( overrides = {} ) => {
 			return { getBlockOrder: () => values.isFirstBlock ? [ "client-1" ] : [ "other" ] };
 		}
 		if ( storeName === "core/editor" ) {
-			return { isEditedPostNew: () => values.isNewPost, getCurrentPostType: () => values.postType };
+			return {
+				isEditedPostNew: () => values.isNewPost,
+				getCurrentPostType: () => values.postType,
+				getRenderingMode: () => values.renderingMode,
+			};
 		}
 		if ( storeName === "yoast-seo/content-planner" ) {
 			return {
@@ -242,6 +248,13 @@ describe( "withInlineBanner", () => {
 
 	test( "does not render the banner when editing a wp_template_part", () => {
 		setupMocks( { postType: "wp_template_part" } );
+		const { queryByTestId } = render( <WithInlineBanner clientId="client-1" /> );
+
+		expect( queryByTestId( "inline-banner" ) ).not.toBeInTheDocument();
+	} );
+
+	test( "does not render the banner when the rendering mode is template-locked (Settings > Template > Show template)", () => {
+		setupMocks( { renderingMode: "template-locked" } );
 		const { queryByTestId } = render( <WithInlineBanner clientId="client-1" /> );
 
 		expect( queryByTestId( "inline-banner" ) ).not.toBeInTheDocument();
@@ -710,7 +723,7 @@ describe( "withInlineBanner", () => {
 					return { getBlockOrder: () => [ "client-1" ] };
 				}
 				if ( storeName === "core/editor" ) {
-					return { isEditedPostNew: () => true, getCurrentPostType: () => "post" };
+					return { isEditedPostNew: () => true, getCurrentPostType: () => "post", getRenderingMode: () => "post-only" };
 				}
 				if ( storeName === "yoast-seo/content-planner" ) {
 					return {
@@ -799,7 +812,7 @@ describe( "withInlineBanner", () => {
 					return { getBlockOrder: () => [ "client-1" ] };
 				}
 				if ( storeName === "core/editor" ) {
-					return { isEditedPostNew: () => true, getCurrentPostType: () => "post" };
+					return { isEditedPostNew: () => true, getCurrentPostType: () => "post", getRenderingMode: () => "post-only" };
 				}
 				if ( storeName === "yoast-seo/content-planner" ) {
 					return {
