@@ -29,6 +29,8 @@ const mockSuggestion = {
 };
 /* eslint-enable camelcase */
 
+const mockRecentContent = [ { title: "My Post", description: "A description." } ];
+
 describe( "content outline store", () => {
 	describe( "getInitialContentOutlineState", () => {
 		it( "should return the initial state", () => {
@@ -284,7 +286,6 @@ describe( "content outline store", () => {
 	} );
 
 	describe( "fetchContentOutline", () => {
-		const mockRecentContent = [ { title: "My Post", description: "A description." } ];
 		const params = {
 			endpoint: "yoast/v1/ai_content_planner/get_outline",
 			postType: "post",
@@ -373,7 +374,6 @@ describe( "content outline store", () => {
 		} );
 
 		it( "should call contentPlannerFetch with POST method and correct data fields", async() => {
-			const mockRecentContent = [ { title: "My Post", description: "A description." } ];
 			const payload = {
 				endpoint: "yoast/v1/ai_content_planner/get_outline",
 				postType: "post",
