@@ -7,7 +7,7 @@ use Yoast\WP\SEO\Integrations\Integration_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client_Cleanup;
 
 /**
- * Handles cleanup of all MyYoast client data on plugin uninstall.
+ * Handles cleanup of all MyYoast client data on plugin uninstall or through Yoast Test Helper.
  */
 class MyYoast_Cleanup_Integration implements Integration_Interface {
 
