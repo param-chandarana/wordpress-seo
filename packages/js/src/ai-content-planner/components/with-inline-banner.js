@@ -177,15 +177,22 @@ const FirstBlockWithBanner = ( { BlockListBlock, props, hasConsent } ) => {
  * persists "1" on the next save.
  */
 export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) => function WithInlineBanner( props ) {
-	const isFirstBlock = useSelect( ( select ) => {
-		return select( "core/block-editor" ).getBlockOrder()[ 0 ] === props.clientId;
+	const { isFirstBlock, isEditingTemplate } = useSelect( ( select ) => {
+		const postType = select( "core/editor" ).getCurrentPostType();
+		return {
+			// getBlockOrder() with no arguments returns root-level block IDs only, so nested
+			// blocks (inside core/query, core/comment-template, etc.) never match here.
+			isFirstBlock: select( "core/block-editor" ).getBlockOrder()[ 0 ] === props.clientId,
+			// Banner should not appear when editing a template or template part in the Site Editor.
+			isEditingTemplate: postType === "wp_template" || postType === "wp_template_part",
+		};
 	}, [ props.clientId ] );
 	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
 	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 	const BannerFallback = useCallback( () => <BlockListBlock { ...props } />, [ BlockListBlock, props ] );
 
-	// Non-first blocks or missing AI generator selectors: zero additional overhead.
-	if ( ! isFirstBlock || ! isObject( aiGeneratorSelectors ) ) {
+	// Non-first blocks, missing AI generator selectors, or template editing: zero additional overhead.
+	if ( ! isFirstBlock || ! isObject( aiGeneratorSelectors ) || isEditingTemplate ) {
 		return <BlockListBlock { ...props } />;
 	}
 
