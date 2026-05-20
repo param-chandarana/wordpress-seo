@@ -4,7 +4,7 @@ import { useSelect } from "@wordpress/data";
 import PropTypes from "prop-types";
 
 import ConnectedPersistentDismissableNotification from "../containers/PersistentDismissableNotification";
-import { ReactComponent as DefaultImage } from "../../../../images/succes_marieke_bubble_optm.svg";
+import { ReactComponent as DefaultImage } from "../../images/succes_marieke_bubble_optm.svg";
 
 /**
  * @param {string} store The Redux store identifier from which to determine dismissed state.
