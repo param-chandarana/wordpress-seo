@@ -1,5 +1,3 @@
-const imageminSvgo = require( "imagemin-svgo" );
-
 /**
  * Imagemin override: adds a target for packages/js/images/ with full SVGO optimization.
  *
@@ -11,22 +9,18 @@ const imageminSvgo = require( "imagemin-svgo" );
 module.exports = {
 	"js-images": {
 		options: {
-			use: [
-				imageminSvgo( {
-					plugins: [
-						{ name: "preset-default" },
-						{
-							name: "addAttributesToSVGElement",
-							params: {
-								attributes: [
-									{ role: "img" },
-									{ "aria-hidden": "true" },
-									{ focusable: "false" },
-								],
-							},
-						},
-					],
-				} ),
+			svgoPlugins: [
+				{ name: "preset-default" },
+				{
+					name: "addAttributesToSVGElement",
+					params: {
+						attributes: [
+							{ role: "img" },
+							{ "aria-hidden": "true" },
+							{ focusable: "false" },
+						],
+					},
+				},
 			],
 		},
 		files: [
