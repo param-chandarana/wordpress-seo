@@ -1,10 +1,9 @@
 /**
- * Imagemin override: adds a target for packages/js/images/ with full SVGO optimization.
+ * Imagemin config: adds a target for packages/js/images/ with full SVGO optimization.
  *
  * The @yoast/grunt-plugin-tasks imagemin config only targets the root images/ and svn-assets/
- * folders, and uses a minimal SVGO plugin set. This override adds packages/js/images/ as a
- * separate target with SVGO's full default plugin suite plus the accessibility attributes
- * required by Yoast's SVG usage.
+ * folders. This adds a js-images target for packages/js/images/ that is picked up automatically
+ * when the imagemin task runs, applying the accessibility attributes required by Yoast's SVG usage.
  */
 module.exports = {
 	"js-images": {
