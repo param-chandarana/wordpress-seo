@@ -44,4 +44,13 @@ describe( "PrimaryTaxonomyPicker constructor", () => {
 
 		expect( setPrimaryTaxonomyId ).toHaveBeenCalledWith( "category", 42 );
 	} );
+
+	it( "dispatches -1 when the hidden input field contains a non-numeric value", () => {
+		getElementByIdSpy = jest.spyOn( document, "getElementById" ).mockReturnValue( { value: "abc" } );
+		const setPrimaryTaxonomyId = jest.fn();
+
+		render( <PrimaryTaxonomyPicker { ...defaultProps } setPrimaryTaxonomyId={ setPrimaryTaxonomyId } /> );
+
+		expect( setPrimaryTaxonomyId ).toHaveBeenCalledWith( "category", -1 );
+	} );
 } );
