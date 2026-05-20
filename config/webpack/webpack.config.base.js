@@ -1,4 +1,4 @@
-const { resolve, dirname } = require( "path" );
+const { dirname } = require( "path" );
 const DependencyExtractionWebpackPlugin = require( "@wordpress/dependency-extraction-webpack-plugin" );
 const defaultConfig = require( "@wordpress/scripts/config/webpack.config" );
 const MiniCssExtractPlugin = require( "mini-css-extract-plugin" );
