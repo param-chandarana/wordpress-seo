@@ -2,7 +2,6 @@
 
 namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\Application;
 
-use Brain\Monkey\Functions;
 use Mockery;
 use Yoast\WP\SEO\Exceptions\Locking\Lock_Timeout_Exception;
 use Yoast\WP\SEO\Helpers\Lock_Helper;
@@ -723,10 +722,6 @@ final class MyYoast_Client_Test extends TestCase {
 			->with( 42, $token_set )
 			->once();
 
-		// First-time exchange flips the site-wide "connected" flag from missing → true.
-		Functions\expect( 'get_option' )->once()->with( 'wpseo_myyoast_site_connected', false )->andReturn( false );
-		Functions\expect( 'update_option' )->once()->with( 'wpseo_myyoast_site_connected', true, false );
-
 		$result = $this->instance->exchange_authorization_code( 42, 'auth-code', 'state-param' );
 
 		$this->assertSame( 'new-access', $result->get_access_token() );
@@ -762,5 +757,21 @@ final class MyYoast_Client_Test extends TestCase {
 			->andReturn( true );
 
 		$this->assertTrue( $this->instance->revoke_token( 'some-token', 'access_token' ) );
+	}
+
+	/**
+	 * Tests that is_site_connected delegates to the client registration port.
+	 *
+	 * @covers ::is_site_connected
+	 *
+	 * @return void
+	 */
+	public function test_is_site_connected() {
+		$this->client_registration
+			->expects( 'is_site_connected' )
+			->once()
+			->andReturn( true );
+
+		$this->assertTrue( $this->instance->is_site_connected() );
 	}
 }

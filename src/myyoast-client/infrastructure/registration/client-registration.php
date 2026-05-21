@@ -36,6 +36,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	private const OPTION_KEY_PREFIX       = 'wpseo_myyoast_client_registration_';
 	private const ENCRYPTION_CONTEXT      = 'yoast-myyoast-registration-credentials';
 	private const DCR_LOCK_TTL_IN_SECONDS = \MINUTE_IN_SECONDS;
+	private const SITE_CONNECTED_OPTION   = 'wpseo_myyoast_site_connected';
 
 	/**
 	 * The discovery client.
@@ -387,6 +388,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	public function forget_registration(): void {
 		unset( $this->cached_registered_clients[ $this->get_option_key() ] );
 		\delete_option( $this->get_option_key() );
+		\delete_option( self::SITE_CONNECTED_OPTION );
 	}
 
 	/**
@@ -411,6 +413,26 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	 */
 	public function rotate_dpop_keys(): void {
 		$this->key_pair_manager->rotate_key_pair( Key_Pair_Manager::PURPOSE_DPOP );
+	}
+
+	/**
+	 * Whether the site has completed the OAuth authorization-code flow at least once.
+	 *
+	 * @return bool
+	 */
+	public function is_site_connected(): bool {
+		return (bool) \get_option( self::SITE_CONNECTED_OPTION, false );
+	}
+
+	/**
+	 * Marks the site as having completed the auth-code flow at least once.
+	 *
+	 * Idempotent: `update_option()` short-circuits when the stored value is unchanged.
+	 *
+	 * @return void
+	 */
+	public function mark_site_connected(): void {
+		\update_option( self::SITE_CONNECTED_OPTION, true, false );
 	}
 
 	/**

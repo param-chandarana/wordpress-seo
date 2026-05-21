@@ -214,6 +214,8 @@ class Authorization_Code_Handler implements LoggerAwareInterface {
 		// Validate ID token nonce (replay protection) if an ID token was returned.
 		$this->validate_id_token_nonce( $token_set, $flow_state );
 
+		$this->client_registration->mark_site_connected();
+
 		return $token_set;
 	}
 

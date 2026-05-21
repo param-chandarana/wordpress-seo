@@ -79,4 +79,24 @@ interface Client_Registration_Interface {
 	 * @return void
 	 */
 	public function rotate_dpop_keys(): void;
+
+	/**
+	 * Whether the site has completed the OAuth authorization-code flow at least once.
+	 *
+	 * True once any user on this site has completed the auth-code flow against the current
+	 * registration. Reset when the registration is forgotten (deregister, stale-redirect-URI
+	 * re-registration, or full local-data wipe).
+	 *
+	 * @return bool
+	 */
+	public function is_site_connected(): bool;
+
+	/**
+	 * Marks the site as having completed the auth-code flow at least once.
+	 *
+	 * Called by the authorization-code handler on every successful exchange; idempotent.
+	 *
+	 * @return void
+	 */
+	public function mark_site_connected(): void;
 }

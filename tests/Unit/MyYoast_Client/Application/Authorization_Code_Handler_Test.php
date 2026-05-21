@@ -340,6 +340,10 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->with( Mockery::type( Authorization_Code_Grant::class ) )
 			->andReturn( $token_set );
 
+		$this->client_registration
+			->expects( 'mark_site_connected' )
+			->once();
+
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
 		$this->assertSame( $token_set, $result );
@@ -381,6 +385,10 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->once()
 			->with( Mockery::type( Authorization_Code_Grant::class ) )
 			->andReturn( $token_set );
+
+		$this->client_registration
+			->expects( 'mark_site_connected' )
+			->once();
 
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
@@ -437,9 +445,52 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->with( 'eyJ.id.token', 'client-123', 'the-nonce' )
 			->andReturn( [ 'sub' => 'user-1' ] );
 
+		$this->client_registration
+			->expects( 'mark_site_connected' )
+			->once();
+
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
 		$this->assertSame( $token_set, $result );
+	}
+
+	/**
+	 * Tests that exchange_code does not mark the site connected when the token request fails.
+	 *
+	 * @covers ::exchange_code
+	 *
+	 * @return void
+	 */
+	public function test_exchange_code_does_not_mark_site_connected_on_failure() {
+		$this->expiring_store
+			->expects( 'get_for_user' )
+			->once()
+			->with( 'myyoast_current_authorization_state', 1 )
+			->andReturn(
+				[
+					'state'         => 'the-state',
+					'code_verifier' => 'the-verifier',
+					'nonce'         => null,
+					'redirect_uri'  => 'https://example.com/callback',
+					'return_url'    => null,
+				],
+			);
+
+		$this->expiring_store
+			->expects( 'delete_for_user' )
+			->once()
+			->with( 'myyoast_current_authorization_state', 1 );
+
+		$this->grant_handler
+			->expects( 'request_token' )
+			->once()
+			->with( Mockery::type( Authorization_Code_Grant::class ) )
+			->andThrow( new Token_Request_Failed_Exception( 'invalid_grant', 'Authorization code expired.' ) );
+
+		// The strict mock fails the test if mark_site_connected is called without an expectation.
+		$this->expectException( Token_Request_Failed_Exception::class );
+
+		$this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 	}
 
 	/**

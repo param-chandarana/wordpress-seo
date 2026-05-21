@@ -40,6 +40,13 @@ final class Client_Registration_Test extends TestCase {
 	private const OPTION_KEY = 'wpseo_myyoast_client_registration_' . self::ISSUER_KEY;
 
 	/**
+	 * The expected site-connected option key.
+	 *
+	 * @var string
+	 */
+	private const SITE_CONNECTED_OPTION = 'wpseo_myyoast_site_connected';
+
+	/**
 	 * The test instance.
 	 *
 	 * @var Client_Registration
@@ -206,6 +213,11 @@ final class Client_Registration_Test extends TestCase {
 		Functions\expect( 'delete_option' )
 			->once()
 			->with( self::OPTION_KEY )
+			->andReturn( true );
+
+		Functions\expect( 'delete_option' )
+			->once()
+			->with( self::SITE_CONNECTED_OPTION )
 			->andReturn( true );
 
 		$this->instance->forget_registration();
@@ -375,6 +387,11 @@ final class Client_Registration_Test extends TestCase {
 			->with( self::OPTION_KEY )
 			->andReturn( true );
 
+		Functions\expect( 'delete_option' )
+			->once()
+			->with( self::SITE_CONNECTED_OPTION )
+			->andReturn( true );
+
 		$this->assertTrue( $this->instance->deregister() );
 	}
 
@@ -460,6 +477,54 @@ final class Client_Registration_Test extends TestCase {
 
 		$result = $this->instance->rotate_registration_keys();
 		$this->assertSame( 'cid', $result->get_client_id() );
+	}
+
+	/**
+	 * Tests that is_site_connected returns false when the option is unset.
+	 *
+	 * @covers ::is_site_connected
+	 *
+	 * @return void
+	 */
+	public function test_is_site_connected_returns_false_when_unset() {
+		Functions\expect( 'get_option' )
+			->once()
+			->with( self::SITE_CONNECTED_OPTION, false )
+			->andReturn( false );
+
+		$this->assertFalse( $this->instance->is_site_connected() );
+	}
+
+	/**
+	 * Tests that is_site_connected returns true when the option is set.
+	 *
+	 * @covers ::is_site_connected
+	 *
+	 * @return void
+	 */
+	public function test_is_site_connected_returns_true_when_set() {
+		Functions\expect( 'get_option' )
+			->once()
+			->with( self::SITE_CONNECTED_OPTION, false )
+			->andReturn( true );
+
+		$this->assertTrue( $this->instance->is_site_connected() );
+	}
+
+	/**
+	 * Tests that mark_site_connected writes the option without autoload.
+	 *
+	 * @covers ::mark_site_connected
+	 *
+	 * @return void
+	 */
+	public function test_mark_site_connected_writes_option() {
+		Functions\expect( 'update_option' )
+			->once()
+			->with( self::SITE_CONNECTED_OPTION, true, false )
+			->andReturn( true );
+
+		$this->instance->mark_site_connected();
 	}
 
 	/**

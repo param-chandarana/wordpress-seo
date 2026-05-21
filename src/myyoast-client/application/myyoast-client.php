@@ -40,15 +40,6 @@ class MyYoast_Client implements LoggerAwareInterface {
 	private const REFRESH_LOCK_TTL_IN_SECONDS = 30;
 
 	/**
-	 * Option key for the site-wide "an admin has connected this site to MyYoast at least once" flag.
-	 *
-	 * Setting this flag is the trigger that lets every user on the site use the OAuth path: once any
-	 * admin has completed the authorization-code flow once, the MyYoast server has a verified redirect
-	 * URI for this client and starts including the site_url claim in client_credentials tokens.
-	 */
-	private const SITE_CONNECTED_OPTION = 'wpseo_myyoast_site_connected';
-
-	/**
 	 * The client registration port.
 	 *
 	 * @var Client_Registration_Interface
@@ -198,9 +189,7 @@ class MyYoast_Client implements LoggerAwareInterface {
 	 * @return bool True if deleted or not registered, false on network failure.
 	 */
 	public function deregister(): bool {
-		$result = $this->client_registration->deregister();
-		$this->clear_site_connected();
-		return $result;
+		return $this->client_registration->deregister();
 	}
 
 	/**
@@ -254,7 +243,6 @@ class MyYoast_Client implements LoggerAwareInterface {
 	public function exchange_authorization_code( int $user_id, string $code, string $state ): Token_Set {
 		$token_set = $this->auth_code_handler->exchange_code( $user_id, $code, $state );
 		$this->user_token_storage->store( $user_id, $token_set );
-		$this->mark_site_connected();
 		return $token_set;
 	}
 
@@ -474,43 +462,15 @@ class MyYoast_Client implements LoggerAwareInterface {
 	}
 
 	/**
-	 * Whether any user on this site has ever obtained a token via the MyYoast auth-code flow.
+	 * Whether the site has completed the OAuth authorization-code flow at least once.
 	 *
 	 * Required because MyYoast only embeds the site_url claim in client_credentials tokens after the
 	 * client has at least one verified redirect URI — i.e. after a user has completed the auth-code
 	 * flow on this site. The flag is set on first successful exchange and cleared on deregister.
 	 *
-	 * Note: the underlying option key (`SITE_CONNECTED_OPTION`) keeps its historical name to avoid
-	 * a stored-data migration. The public method name reflects the semantic the AI module reads
-	 * against — "has any user token been issued on this site?"
-	 *
-	 * @return bool True if the flag is currently set.
+	 * @return bool
 	 */
-	public function has_any_user_token(): bool {
-		return (bool) \get_option( self::SITE_CONNECTED_OPTION, false );
-	}
-
-	/**
-	 * Marks the site as having completed the auth-code flow at least once.
-	 *
-	 * Called by the authorization-code handler on first successful exchange.
-	 *
-	 * @return void
-	 */
-	private function mark_site_connected(): void {
-		if ( $this->has_any_user_token() ) {
-			return;
-		}
-		\update_option( self::SITE_CONNECTED_OPTION, true, false );
-	}
-
-	/**
-	 * Clears the site-connected flag. Called when the OAuth client is deregistered so the factory
-	 * stops routing AI traffic through the OAuth path on a site that no longer has a valid connection.
-	 *
-	 * @return void
-	 */
-	private function clear_site_connected(): void {
-		\delete_option( self::SITE_CONNECTED_OPTION );
+	public function is_site_connected(): bool {
+		return $this->client_registration->is_site_connected();
 	}
 }
