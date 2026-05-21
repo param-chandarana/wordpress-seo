@@ -90,11 +90,11 @@ final class Get_Outline_Route_Test extends TestCase {
 	 * Builds a valid request body, optionally with overrides or removed keys.
 	 *
 	 * @param array<string, mixed> $overrides Values to override on the default body.
-	 * @param array<int, string>   $unset     Top-level keys to remove from the default body.
+	 * @param array<int, string>   $remove     Top-level keys to remove from the default body.
 	 *
 	 * @return array<string, mixed> The request body.
 	 */
-	private function valid_body( array $overrides = [], array $unset = [] ): array {
+	private function valid_body( array $overrides = [], array $remove = [] ): array {
 		$body = [
 			'post_type'        => 'post',
 			'language'         => 'en_US',
@@ -116,7 +116,7 @@ final class Get_Outline_Route_Test extends TestCase {
 			],
 		];
 
-		foreach ( $unset as $key ) {
+		foreach ( $remove as $key ) {
 			unset( $body[ $key ] );
 		}
 
