@@ -238,6 +238,25 @@ describe( "Paper", function() {
 			const paper = new Paper( "<p>Hello world.</p>" );
 			expect( paper.hasSameTreeInputsAs( null ) ).toBe( false );
 		} );
+
+		it( "treats a missing shortcodes attribute as equivalent to an empty array", function() {
+			// A paper deserialized from a payload that omits `shortcodes` ends up with the attribute undefined,
+			// but it produces the same tree as a paper that explicitly carries shortcodes: [], so the predicate
+			// must not report them as different tree inputs.
+			const paper1 = new Paper( "<p>Hello world.</p>", { shortcodes: [] } );
+			const paper2 = new Paper( "<p>Hello world.</p>" );
+			delete paper2._attributes.shortcodes;
+			expect( paper1.hasSameTreeInputsAs( paper2 ) ).toBe( true );
+			expect( paper2.hasSameTreeInputsAs( paper1 ) ).toBe( true );
+		} );
+
+		it( "treats a missing wpBlocks attribute as equivalent to an empty array", function() {
+			const paper1 = new Paper( "<p>Hello world.</p>", { wpBlocks: [] } );
+			const paper2 = new Paper( "<p>Hello world.</p>" );
+			delete paper2._attributes.wpBlocks;
+			expect( paper1.hasSameTreeInputsAs( paper2 ) ).toBe( true );
+			expect( paper2.hasSameTreeInputsAs( paper1 ) ).toBe( true );
+		} );
 	} );
 
 	describe( "hasText", function() {
