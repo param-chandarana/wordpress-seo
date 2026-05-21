@@ -143,16 +143,14 @@ class Get_Outline_Route implements Route_Interface {
 						'maxItems'    => 100,
 						'items'       => [
 							'type'                 => 'object',
-							'required'             => [
-								'title',
-								'description',
-							],
 							'properties'           => [
 								'title'       => [
-									'type' => 'string',
+									'type'     => 'string',
+									'required' => true,
 								],
 								'description' => [
-									'type' => 'string',
+									'type'     => 'string',
+									'required' => true,
 								],
 							],
 							'additionalProperties' => false,
