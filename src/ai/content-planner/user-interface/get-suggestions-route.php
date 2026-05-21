@@ -142,16 +142,29 @@ class Get_Suggestions_Route implements Route_Interface {
 	}
 
 	/**
-	 * Checks if the user is logged in and can edit posts.
+	 * Checks if the user is logged in and can edit posts of the requested post type.
 	 *
-	 * @return bool Whether the user is logged in and can edit posts.
+	 * The requested post_type is caller-controlled, so the permission must be evaluated
+	 * against that post type's own edit_posts meta-capability — not the generic
+	 * 'edit_posts' string, which would let a user with edit_posts but no edit_pages
+	 * (e.g. an Author) pull metadata for pages or arbitrary CPTs.
+	 *
+	 * @param WP_REST_Request $request The request object.
+	 *
+	 * @return bool Whether the user can edit posts of the requested post type.
 	 */
-	public function check_permissions(): bool {
+	public function check_permissions( WP_REST_Request $request ): bool {
 		$user = \wp_get_current_user();
 		if ( $user === null || $user->ID < 1 ) {
 			return false;
 		}
 
-		return \user_can( $user, 'edit_posts' );
+		$post_type        = $request->get_param( 'post_type' );
+		$post_type_object = \get_post_type_object( $post_type );
+		if ( $post_type_object === null ) {
+			return false;
+		}
+
+		return \user_can( $user, $post_type_object->cap->edit_posts );
 	}
 }
