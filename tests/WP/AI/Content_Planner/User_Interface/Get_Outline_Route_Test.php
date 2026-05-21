@@ -45,17 +45,45 @@ final class Get_Outline_Route_Test extends TestCase {
 	/**
 	 * Sets up the route on the live REST server and authenticates as an admin.
 	 *
+	 * Disables the AI conditional so the plugin's loader skips its own
+	 * registration of Get_Outline_Route, then registers a mocked instance on
+	 * rest_api_init and re-fires the action against a fresh REST server. This
+	 * keeps register_rest_route inside the rest_api_init context (no
+	 * _doing_it_wrong) and guarantees the mocked handler — not the real one — is
+	 * what dispatch reaches.
+	 *
 	 * @return void
 	 */
 	public function set_up() {
 		parent::set_up();
 
+		\YoastSEO()->helpers->options->set( 'enable_ai_generator', false );
+
 		$this->command_handler = Mockery::mock( Content_Outline_Command_Handler::class );
 		$this->instance        = new Get_Outline_Route( $this->command_handler );
-		$this->instance->register_routes();
+
+		\add_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
+
+		global $wp_rest_server;
+		$wp_rest_server = new \WP_REST_Server();
+		\do_action( 'rest_api_init', $wp_rest_server );
 
 		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
 		\wp_set_current_user( $user_id );
+	}
+
+	/**
+	 * Removes the route hook and resets the REST server so the next test starts clean.
+	 *
+	 * @return void
+	 */
+	public function tear_down() {
+		\remove_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
+
+		global $wp_rest_server;
+		$wp_rest_server = null;
+
+		parent::tear_down();
 	}
 
 	/**

@@ -84,16 +84,8 @@ final class To_Array_Test extends Abstract_Content_Suggestion_Response {
 			],
 			'recent_content' => [
 				[
-					'title'                 => 'My Post Title',
-					'description'           => 'A description of the post.',
-					'category'              => [
-						'name' => 'Tech',
-						'id'   => 5,
-					],
-					'primary_focus_keyword' => 'focus keyword',
-					'is_cornerstone'        => 1,
-					'last_modified'         => '2024-01-15',
-					'schema_article_type'   => 'BlogPosting',
+					'title'       => 'My Post Title',
+					'description' => 'A description of the post.',
 				],
 			],
 		];
