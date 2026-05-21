@@ -53,11 +53,15 @@ class Content_Suggestion_Response {
 	/**
 	 * Returns this object in array format.
 	 *
-	 * @return array<string, array<array<string, string|bool|array<string, int>>>> The response as an array.
+	 * Uses the minimal Post representation so editor-only metadata
+	 * (focus keyphrase, cornerstone flag, schema type) never crosses
+	 * the REST boundary into the browser.
+	 *
+	 * @return array<string, array<array<string, string>>> The response as an array.
 	 */
 	public function to_array(): array {
 		$result                   = $this->suggestions->to_array();
-		$result['recent_content'] = $this->recent_content->to_array();
+		$result['recent_content'] = $this->recent_content->to_minimal_array();
 		return $result;
 	}
 }
