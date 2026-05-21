@@ -1,6 +1,6 @@
 import { Title, useSvgAria } from "@yoast/ui-library";
-import ChevronDownIcon from "@heroicons/react/solid/esm/ChevronDownIcon";
-import ChevronUpIcon from "@heroicons/react/solid/esm/ChevronUpIcon";
+import ChevronDownIcon from "@heroicons/react/solid/ChevronDownIcon";
+import ChevronUpIcon from "@heroicons/react/solid/ChevronUpIcon";
 import { FeatureItem } from "./feature-item";
 import { useCallback } from "@wordpress/element";
 import { useSelectSettings, useDispatchSettings } from "../hooks";

@@ -1,5 +1,5 @@
-import CheckIcon from "@heroicons/react/solid/esm/CheckIcon";
-import XIcon from "@heroicons/react/solid/esm/XIcon";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import XIcon from "@heroicons/react/solid/XIcon";
 import { Fragment } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
 import { PropTypes } from "prop-types";

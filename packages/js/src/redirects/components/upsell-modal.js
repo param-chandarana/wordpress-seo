@@ -1,4 +1,4 @@
-import LockOpenIcon from "@heroicons/react/outline/esm/LockOpenIcon";
+import LockOpenIcon from "@heroicons/react/outline/LockOpenIcon";
 import { __, sprintf } from "@wordpress/i18n";
 import { Button, useModalContext } from "@yoast/ui-library";
 import { VideoFlow } from "../../shared-admin/components";

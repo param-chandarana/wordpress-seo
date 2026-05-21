@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
-import EyeIcon from "@heroicons/react/outline/esm/EyeIcon";
-import EyeOffIcon from "@heroicons/react/outline/esm/EyeOffIcon";
+import EyeIcon from "@heroicons/react/outline/EyeIcon";
+import EyeOffIcon from "@heroicons/react/outline/EyeOffIcon";
 import { useDispatch } from "@wordpress/data";
 import { useCallback, useContext } from "@wordpress/element";
 import { Button } from "@yoast/ui-library";

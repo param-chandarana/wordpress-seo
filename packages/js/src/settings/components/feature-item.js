@@ -5,8 +5,8 @@ import { useFormikContext } from "formik";
 import { useDisabledMessage, useSelectSettings, useToggleHandlerWithModals } from "../hooks";
 import { get, has } from "lodash";
 import { Button, Link, Title, ToggleField, useSvgAria } from "@yoast/ui-library";
-import LockOpenIcon from "@heroicons/react/outline/esm/LockOpenIcon";
-import ArrowNarrowRightIcon from "@heroicons/react/outline/esm/ArrowNarrowRightIcon";
+import LockOpenIcon from "@heroicons/react/outline/LockOpenIcon";
+import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
 import { __, sprintf } from "@wordpress/i18n";
 import { FormikValueChangeField } from "../../shared-admin/components/form";
 

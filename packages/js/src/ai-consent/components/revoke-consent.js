@@ -1,4 +1,4 @@
-import ExclamationIcon from "@heroicons/react/outline/esm/ExclamationIcon";
+import ExclamationIcon from "@heroicons/react/outline/ExclamationIcon";
 import { useDispatch, useSelect } from "@wordpress/data";
 import { useCallback, useState } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";

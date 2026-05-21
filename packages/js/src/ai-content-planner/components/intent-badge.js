@@ -1,8 +1,8 @@
 import { __ } from "@wordpress/i18n";
-import BookOpenIcon from "@heroicons/react/outline/esm/BookOpenIcon";
-import StarIcon from "@heroicons/react/outline/esm/StarIcon";
-import MapIcon from "@heroicons/react/outline/esm/MapIcon";
-import ShoppingCartIcon from "@heroicons/react/outline/esm/ShoppingCartIcon";
+import BookOpenIcon from "@heroicons/react/outline/BookOpenIcon";
+import StarIcon from "@heroicons/react/outline/StarIcon";
+import MapIcon from "@heroicons/react/outline/MapIcon";
+import ShoppingCartIcon from "@heroicons/react/outline/ShoppingCartIcon";
 import classNames from "classnames";
 import { Badge, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria } from "@yoast/ui-library";
 import { useId } from "@wordpress/element";

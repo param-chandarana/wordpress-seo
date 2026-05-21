@@ -1,7 +1,7 @@
 import { Listbox, Transition } from "@headlessui/react";
-import CheckIcon from "@heroicons/react/solid/esm/CheckIcon";
-import ExclamationCircleIcon from "@heroicons/react/solid/esm/ExclamationCircleIcon";
-import SelectorIcon from "@heroicons/react/solid/esm/SelectorIcon";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
+import SelectorIcon from "@heroicons/react/solid/SelectorIcon";
 import { Fragment, useMemo } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
 import classNames from "classnames";

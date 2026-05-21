@@ -5,8 +5,8 @@ import { __, sprintf } from "@wordpress/i18n";
 import { Feature } from "../features/feature";
 import { featuresData, perksData } from "../features/features-data";
 import { safeCreateInterpolateElement } from "../../../helpers/i18n";
-import ExternalLinkIcon from "@heroicons/react/outline/esm/ExternalLinkIcon";
-import CheckIcon from "@heroicons/react/outline/esm/CheckIcon";
+import ExternalLinkIcon from "@heroicons/react/outline/ExternalLinkIcon";
+import CheckIcon from "@heroicons/react/outline/CheckIcon";
 import { Button, useModalContext } from "@yoast/ui-library";
 import { useSelect } from "@wordpress/data";
 
