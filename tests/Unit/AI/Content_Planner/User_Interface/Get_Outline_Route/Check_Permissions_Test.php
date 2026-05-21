@@ -43,8 +43,8 @@ final class Check_Permissions_Test extends Abstract_Get_Outline_Route_Test {
 	 * @return stdClass The post-type object.
 	 */
 	private function build_post_type_object( string $edit_posts_cap ): stdClass {
-		$post_type_object             = new stdClass();
-		$post_type_object->cap        = new stdClass();
+		$post_type_object                  = new stdClass();
+		$post_type_object->cap             = new stdClass();
 		$post_type_object->cap->edit_posts = $edit_posts_cap;
 
 		return $post_type_object;

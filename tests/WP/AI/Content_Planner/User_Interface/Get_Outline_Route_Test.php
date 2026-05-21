@@ -6,6 +6,7 @@ namespace Yoast\WP\SEO\Tests\WP\AI\Content_Planner\User_Interface;
 use Mockery;
 use WP_REST_Request;
 use WP_REST_Response;
+use WP_REST_Server;
 use Yoast\WP\SEO\AI\Content_Planner\Application\Content_Outline_Command;
 use Yoast\WP\SEO\AI\Content_Planner\Application\Content_Outline_Command_Handler;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Section;
@@ -64,8 +65,9 @@ final class Get_Outline_Route_Test extends TestCase {
 
 		\add_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $wp_rest_server is a WP core global.
 		global $wp_rest_server;
-		$wp_rest_server = new \WP_REST_Server();
+		$wp_rest_server = new WP_REST_Server();
 		\do_action( 'rest_api_init', $wp_rest_server );
 
 		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
@@ -80,6 +82,7 @@ final class Get_Outline_Route_Test extends TestCase {
 	public function tear_down() {
 		\remove_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $wp_rest_server is a WP core global.
 		global $wp_rest_server;
 		$wp_rest_server = null;
 
@@ -90,7 +93,7 @@ final class Get_Outline_Route_Test extends TestCase {
 	 * Builds a valid request body, optionally with overrides or removed keys.
 	 *
 	 * @param array<string, mixed> $overrides Values to override on the default body.
-	 * @param array<int, string>   $remove     Top-level keys to remove from the default body.
+	 * @param array<int, string>   $remove    Top-level keys to remove from the default body.
 	 *
 	 * @return array<string, mixed> The request body.
 	 */
