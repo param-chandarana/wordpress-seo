@@ -1,51 +1,30 @@
 /**
- * Imagemin config: replaces the @yoast/grunt-plugin-tasks imagemin config with correct SVGO v2
- * syntax and adds a target for packages/js/images/.
+ * Imagemin config: adds a js-images target for packages/js/images/ with the same
+ * SVGO options used by @yoast/grunt-plugin-tasks for images/ and svn-assets/.
  *
- * The upstream plugin target uses SVGO v1 plugin syntax which is silently ignored by imagemin-svgo
- * v7 (SVGO v2). This replaces it with preset-default, which applies the full SVGO optimisation
- * suite and produces smaller output. The js-images target extends the same optimisation to SVGs
- * under packages/js/images/.
+ * imagemin-svgo@7 bundles SVGO v1, so plugin options must use SVGO v1 syntax.
+ * The upstream @yoast/grunt-plugin-tasks imagemin config is left unchanged;
+ * this file only adds the js-images target.
  */
-
-const svgoOptions = {
-	svgoPlugins: [
-		{ name: "preset-default" },
-		{
-			name: "addAttributesToSVGElement",
-			params: {
-				attributes: [
-					{ role: "img" },
-					{ "aria-hidden": "true" },
-					{ focusable: "false" },
-				],
-			},
-		},
-	],
-};
-
 module.exports = {
-	plugin: {
-		options: svgoOptions,
-		files: [
-			{
-				expand: true,
-				cwd: "<%= paths.images %>",
-				src: [ "*.*" ],
-				dest: "<%= paths.images %>",
-				isFile: true,
-			},
-			{
-				expand: true,
-				cwd: "<%= paths.assets %>",
-				src: [ "*.*" ],
-				dest: "<%= paths.assets %>",
-				isFile: true,
-			},
-		],
-	},
 	"js-images": {
-		options: svgoOptions,
+		options: {
+			svgoPlugins: [
+				{ removeTitle: true },
+				{ removeDesc: true },
+				{ removeUnknownsAndDefaults: {
+					keepRoleAttr: true,
+					keepAriaAttrs: true,
+				} },
+				{ addAttributesToSVGElement: {
+					attributes: [
+						{ role: "img" },
+						{ "aria-hidden": "true" },
+						{ focusable: "false" },
+					],
+				} },
+			],
+		},
 		files: [
 			{
 				expand: true,
