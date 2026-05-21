@@ -66,9 +66,8 @@ final class Get_Outline_Route_Test extends TestCase {
 		\add_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
 
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $wp_rest_server is a WP core global.
-		global $wp_rest_server;
-		$wp_rest_server = new WP_REST_Server();
-		\do_action( 'rest_api_init', $wp_rest_server );
+		$GLOBALS['wp_rest_server'] = new WP_REST_Server();
+		\do_action( 'rest_api_init', $GLOBALS['wp_rest_server'] );
 
 		$user_id = self::factory()->user->create( [ 'role' => 'administrator' ] );
 		\wp_set_current_user( $user_id );
@@ -83,8 +82,7 @@ final class Get_Outline_Route_Test extends TestCase {
 		\remove_action( 'rest_api_init', [ $this->instance, 'register_routes' ] );
 
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $wp_rest_server is a WP core global.
-		global $wp_rest_server;
-		$wp_rest_server = null;
+		$GLOBALS['wp_rest_server'] = null;
 
 		parent::tear_down();
 	}

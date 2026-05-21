@@ -51,7 +51,7 @@ final class Check_Permissions_Test extends Abstract_Get_Outline_Route_Test {
 	}
 
 	/**
-	 * Tests check_permissions returns false for an anonymous user.
+	 * Tests check_permissions returns false for an anonymous user without inspecting the request.
 	 *
 	 * @return void
 	 */
@@ -60,7 +60,9 @@ final class Check_Permissions_Test extends Abstract_Get_Outline_Route_Test {
 		$user->ID = 0;
 		Functions\when( 'wp_get_current_user' )->justReturn( $user );
 
-		$this->assertFalse( $this->instance->check_permissions( $this->build_request( 'post' ) ) );
+		$request = Mockery::mock( WP_REST_Request::class );
+
+		$this->assertFalse( $this->instance->check_permissions( $request ) );
 	}
 
 	/**
