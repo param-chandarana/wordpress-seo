@@ -7,6 +7,7 @@ namespace Yoast\WP\SEO\Tests\Unit\AI\Authentication\Application\OAuth_Auth_Strat
 use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Application\OAuth_Auth_Strategy;
+use Yoast\WP\SEO\AI\HTTP_Request\Application\Response_Validator;
 use Yoast\WP\SEO\AI\HTTP_Request\Infrastructure\API_Client;
 use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Auth_Token_Type;
@@ -33,6 +34,14 @@ abstract class Abstract_OAuth_Auth_Strategy_Test extends TestCase {
 	 * @var Mockery\MockInterface|API_Client
 	 */
 	protected $api_client;
+
+	/**
+	 * The response validator. Uses the real implementation by default so status->exception mapping
+	 * is exercised end-to-end through send(); test cases that want to short-circuit can replace it.
+	 *
+	 * @var Response_Validator
+	 */
+	protected $response_validator;
 
 	/**
 	 * The WP user.
@@ -63,8 +72,9 @@ abstract class Abstract_OAuth_Auth_Strategy_Test extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->myyoast_client = Mockery::mock( MyYoast_Client::class );
-		$this->api_client     = Mockery::mock( API_Client::class );
+		$this->myyoast_client     = Mockery::mock( MyYoast_Client::class );
+		$this->api_client         = Mockery::mock( API_Client::class );
+		$this->response_validator = new Response_Validator();
 
 		$this->user     = new WP_User();
 		$this->user->ID = 42;
@@ -78,8 +88,8 @@ abstract class Abstract_OAuth_Auth_Strategy_Test extends TestCase {
 				},
 			)
 			->byDefault();
-		$this->myyoast_client->shouldReceive( 'create_dpop_proof' )->andReturn( 'dpop.proof.jwt' )->byDefault();
+		$this->api_client->shouldReceive( 'get_request_timeout' )->andReturn( 60 )->byDefault();
 
-		$this->instance = new OAuth_Auth_Strategy( $this->myyoast_client, $this->api_client );
+		$this->instance = new OAuth_Auth_Strategy( $this->myyoast_client, $this->api_client, $this->response_validator );
 	}
 }

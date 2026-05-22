@@ -8,9 +8,11 @@ use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Application\Token_Auth_Strategy;
 use Yoast\WP\SEO\AI\Authorization\Application\Token_Manager;
+use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 use Yoast\WP\SEO\Helpers\User_Helper;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
@@ -38,6 +40,13 @@ final class Token_Auth_Strategy_Test extends TestCase {
 	private $user_helper;
 
 	/**
+	 * The request handler mock.
+	 *
+	 * @var Mockery\MockInterface|Request_Handler
+	 */
+	private $request_handler;
+
+	/**
 	 * The WP user.
 	 *
 	 * @var WP_User
@@ -59,74 +68,73 @@ final class Token_Auth_Strategy_Test extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->token_manager = Mockery::mock( Token_Manager::class );
-		$this->user_helper   = Mockery::mock( User_Helper::class );
+		$this->token_manager   = Mockery::mock( Token_Manager::class );
+		$this->user_helper     = Mockery::mock( User_Helper::class );
+		$this->request_handler = Mockery::mock( Request_Handler::class );
 
 		$this->user     = new WP_User();
 		$this->user->ID = 42;
 
-		$this->instance = new Token_Auth_Strategy( $this->token_manager, $this->user_helper );
+		$this->instance = new Token_Auth_Strategy( $this->token_manager, $this->user_helper, $this->request_handler );
 	}
 
 	/**
-	 * Tests that decorate() attaches the Bearer header with the JWT from Token_Manager.
+	 * Happy path: token is fetched, Bearer header is attached, request_handler returns the response.
 	 *
 	 * @covers ::__construct
-	 * @covers ::decorate
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_decorate_attaches_bearer_header(): void {
+	public function test_send_attaches_bearer_header_and_dispatches(): void {
+		$response = new Response( '{}', 200, 'OK' );
+
 		$this->token_manager->expects( 'get_or_request_access_token' )->with( $this->user )->andReturn( 'jwt-token' );
+		$this->request_handler->expects( 'handle' )->with(
+			Mockery::on(
+				function ( Request $decorated ): bool {
+					$this->assertSame( 'Bearer jwt-token', ( $decorated->get_headers()['Authorization'] ?? null ) );
+					return true;
+				},
+			),
+		)->andReturn( $response );
 
-		$decorated = $this->instance->decorate( new Request( '/openai/suggestions/seo-title' ), $this->user );
+		$this->user_helper->shouldNotReceive( 'delete_meta' );
 
-		$this->assertSame( 'Bearer jwt-token', ( $decorated->get_headers()['Authorization'] ?? null ) );
+		$this->assertSame( $response, $this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user ) );
 	}
 
 	/**
-	 * On the first 401, on_failure deletes both stored JWTs and returns true.
+	 * On 401, stored access + refresh JWT meta are deleted and Unauthorized_Exception is rethrown.
 	 *
-	 * @covers ::on_failure
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_on_failure_deletes_jwts_on_first_401(): void {
+	public function test_send_deletes_jwts_on_401(): void {
+		$this->token_manager->expects( 'get_or_request_access_token' )->andReturn( 'jwt-token' );
+		$this->request_handler->expects( 'handle' )->andThrow( new Unauthorized_Exception( '401', 401 ) );
+
 		$this->user_helper->expects( 'delete_meta' )->with( $this->user->ID, '_yoast_wpseo_ai_generator_access_jwt' )->once();
 		$this->user_helper->expects( 'delete_meta' )->with( $this->user->ID, '_yoast_wpseo_ai_generator_refresh_jwt' )->once();
 
-		$retry = $this->instance->on_failure( new Request( '/x' ), $this->user, new Unauthorized_Exception( '401', 401 ), 1 );
-
-		$this->assertTrue( $retry );
+		$this->expectException( Unauthorized_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
 	}
 
 	/**
-	 * On a second 401 (attempt > 1), on_failure gives up without touching meta.
+	 * Non-401 errors propagate without touching stored JWTs.
 	 *
-	 * @covers ::on_failure
-	 *
-	 * @return void
-	 */
-	public function test_on_failure_returns_false_on_second_401(): void {
-		$this->user_helper->shouldNotReceive( 'delete_meta' );
-
-		$retry = $this->instance->on_failure( new Request( '/x' ), $this->user, new Unauthorized_Exception( '401', 401 ), 2 );
-
-		$this->assertFalse( $retry );
-	}
-
-	/**
-	 * Non-401 exceptions are not recoverable for the Token strategy.
-	 *
-	 * @covers ::on_failure
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_on_failure_returns_false_for_non_unauthorized(): void {
+	public function test_send_propagates_non_401_without_clearing_jwts(): void {
+		$this->token_manager->expects( 'get_or_request_access_token' )->andReturn( 'jwt-token' );
+		$this->request_handler->expects( 'handle' )->andThrow( new Bad_Request_Exception( '400', 400 ) );
 		$this->user_helper->shouldNotReceive( 'delete_meta' );
 
-		$retry = $this->instance->on_failure( new Request( '/x' ), $this->user, new Bad_Request_Exception( '400', 400 ), 1 );
-
-		$this->assertFalse( $retry );
+		$this->expectException( Bad_Request_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
 	}
 }

@@ -11,7 +11,6 @@ use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender;
 use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
 use Yoast\WP\SEO\AI\Authentication\Application\OAuth_Auth_Strategy;
 use Yoast\WP\SEO\AI\Authentication\Application\Token_Auth_Strategy;
-use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
@@ -23,13 +22,6 @@ use Yoast\WP\SEO\Tests\Unit\TestCase;
  * @coversDefaultClass \Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory
  */
 final class AI_Request_Sender_Factory_Test extends TestCase {
-
-	/**
-	 * The request handler mock.
-	 *
-	 * @var Mockery\MockInterface|Request_Handler
-	 */
-	private $request_handler;
 
 	/**
 	 * The MyYoast connection conditional mock.
@@ -74,16 +66,14 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->request_handler = Mockery::mock( Request_Handler::class );
-		$this->conditional     = Mockery::mock( MyYoast_Connection_Conditional::class );
-		$this->oauth_strategy  = Mockery::mock( OAuth_Auth_Strategy::class );
-		$this->token_strategy  = Mockery::mock( Token_Auth_Strategy::class );
+		$this->conditional    = Mockery::mock( MyYoast_Connection_Conditional::class );
+		$this->oauth_strategy = Mockery::mock( OAuth_Auth_Strategy::class );
+		$this->token_strategy = Mockery::mock( Token_Auth_Strategy::class );
 
 		$this->user     = new WP_User();
 		$this->user->ID = 42;
 
 		$this->instance = new AI_Request_Sender_Factory(
-			$this->request_handler,
 			$this->conditional,
 			$this->oauth_strategy,
 			$this->token_strategy,
@@ -93,6 +83,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	/**
 	 * Feature flag off: returns a sender with Token as primary, no fallback.
 	 *
+	 * @covers ::__construct
 	 * @covers ::create
 	 *
 	 * @return void
@@ -108,9 +99,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	}
 
 	/**
-	 * Feature flag on: returns a sender with OAuth as primary and Token as fallback. Registration
-	 * is no longer gated at selection time — get_site_token auto-registers on demand, and the sender
-	 * falls back to Token if OAuth setup or dispatch fails.
+	 * Feature flag on: returns a sender with OAuth as primary and Token as fallback.
 	 *
 	 * @covers ::create
 	 *

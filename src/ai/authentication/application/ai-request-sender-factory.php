@@ -6,7 +6,6 @@ namespace Yoast\WP\SEO\AI\Authentication\Application;
 
 use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Domain\Auth_Method;
-use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use YoastSEO_Vendor\Psr\Log\LoggerAwareInterface;
 use YoastSEO_Vendor\Psr\Log\LoggerAwareTrait;
@@ -16,20 +15,13 @@ use YoastSEO_Vendor\Psr\Log\NullLogger;
  * Builds an AI_Request_Sender configured with the right auth strategy (primary + optional fallback)
  * for each outbound AI request.
  *
- * Selection order (first match wins): wpseo_ai_auth_method filter override → feature flag check →
- * MyYoast client registered → site has any user token. The auth model is site-wide: once any admin
- * has completed the auth-code flow, every WP user on the site uses the OAuth path.
+ * Selection order (first match wins): wpseo_ai_auth_method filter override → MyYoast connection
+ * feature flag. The auth model is site-wide: once any admin has completed the auth-code flow,
+ * every WP user on the site uses the OAuth path.
  */
 class AI_Request_Sender_Factory implements LoggerAwareInterface {
 
 	use LoggerAwareTrait;
-
-	/**
-	 * The AI request handler.
-	 *
-	 * @var Request_Handler
-	 */
-	private $request_handler;
 
 	/**
 	 * The MyYoast connection feature flag conditional.
@@ -55,18 +47,15 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	/**
 	 * Constructor.
 	 *
-	 * @param Request_Handler                $request_handler                The AI request handler.
 	 * @param MyYoast_Connection_Conditional $myyoast_connection_conditional The MyYoast connection feature flag.
 	 * @param OAuth_Auth_Strategy            $oauth_strategy                 The OAuth strategy.
 	 * @param Token_Auth_Strategy            $token_strategy                 The Token strategy.
 	 */
 	public function __construct(
-		Request_Handler $request_handler,
 		MyYoast_Connection_Conditional $myyoast_connection_conditional,
 		OAuth_Auth_Strategy $oauth_strategy,
 		Token_Auth_Strategy $token_strategy
 	) {
-		$this->request_handler                = $request_handler;
 		$this->myyoast_connection_conditional = $myyoast_connection_conditional;
 		$this->oauth_strategy                 = $oauth_strategy;
 		$this->token_strategy                 = $token_strategy;
@@ -82,9 +71,9 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	 */
 	public function create( WP_User $user ): AI_Request_Sender {
 		if ( $this->should_use_oauth( $user ) ) {
-			return new AI_Request_Sender( $this->request_handler, $this->oauth_strategy, $this->token_strategy );
+			return new AI_Request_Sender( $this->oauth_strategy, $this->token_strategy );
 		}
-		return new AI_Request_Sender( $this->request_handler, $this->token_strategy );
+		return new AI_Request_Sender( $this->token_strategy );
 	}
 
 	/**
