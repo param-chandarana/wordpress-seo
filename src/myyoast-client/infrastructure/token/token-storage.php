@@ -135,22 +135,38 @@ class Token_Storage implements Token_Storage_Interface, LoggerAwareInterface {
 	}
 
 	/**
-	 * Deletes every stored token set across resource buckets.
+	 * Deletes every stored token set across resource buckets for the current issuer.
 	 *
 	 * @return void
 	 */
 	public function delete_all(): void {
-		global $wpdb;
+		$this->bulk_delete_by_prefix( $this->get_option_key_prefix_for_current_issuer() );
+	}
 
-		if ( ! isset( $wpdb ) ) {
-			return;
-		}
+	/**
+	 * Deletes every stored token set across all issuers and resource buckets.
+	 *
+	 * @return void
+	 */
+	public function delete_all_issuers(): void {
+		$this->bulk_delete_by_prefix( self::OPTION_KEY_PREFIX );
+	}
+
+	/**
+	 * Deletes every option whose name starts with the given prefix.
+	 *
+	 * @param string $prefix The option-name prefix.
+	 *
+	 * @return void
+	 */
+	private function bulk_delete_by_prefix( string $prefix ): void {
+		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Bulk cleanup.
 		$wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-				$wpdb->esc_like( $this->get_option_key_prefix_for_current_issuer() ) . '%',
+				$wpdb->esc_like( $prefix ) . '%',
 			),
 		);
 	}

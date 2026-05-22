@@ -149,20 +149,39 @@ class User_Token_Storage implements User_Token_Storage_Interface, LoggerAwareInt
 	}
 
 	/**
-	 * Deletes all stored user token sets across all users and resource buckets.
-	 * Used for cleanup on uninstall.
+	 * Deletes every stored user token set across all users and resource buckets for the current issuer.
 	 *
 	 * @return void
 	 */
 	public function delete_all(): void {
+		$this->bulk_delete_by_prefix( $this->get_meta_key_prefix_for_current_issuer() );
+	}
+
+	/**
+	 * Deletes every stored user token set across all users, issuers, and resource buckets.
+	 *
+	 * @return void
+	 */
+	public function delete_all_issuers(): void {
+		$this->bulk_delete_by_prefix( self::META_KEY_PREFIX );
+	}
+
+	/**
+	 * Deletes every usermeta row whose meta_key starts with the given prefix.
+	 *
+	 * @param string $prefix The meta_key prefix.
+	 *
+	 * @return void
+	 */
+	private function bulk_delete_by_prefix( string $prefix ): void {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Delete query.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Bulk cleanup.
 		$wpdb->query(
 			$wpdb->prepare(
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bulk cleanup on uninstall.
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Bulk cleanup.
 				"DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s",
-				$wpdb->esc_like( $this->get_meta_key_prefix_for_current_issuer() ) . '%',
+				$wpdb->esc_like( $prefix ) . '%',
 			),
 		);
 	}

@@ -52,9 +52,19 @@ interface Token_Storage_Interface {
 	public function get_all(): array;
 
 	/**
-	 * Deletes every stored token set across resource buckets.
+	 * Deletes every stored token set across resource buckets for the current issuer.
 	 *
 	 * @return void
 	 */
 	public function delete_all(): void;
+
+	/**
+	 * Deletes every stored token set across all issuers and resource buckets.
+	 *
+	 * Intended for full plugin cleanup on uninstall, where any token bucket
+	 * for any issuer that this site ever connected to should be purged.
+	 *
+	 * @return void
+	 */
+	public function delete_all_issuers(): void;
 }

@@ -228,4 +228,49 @@ final class User_Token_Storage_Test extends TestCase {
 
 		$this->instance->delete( 42, $indicator );
 	}
+
+	/**
+	 * Tests that delete_all is scoped to the current issuer.
+	 *
+	 * @covers ::delete_all
+	 *
+	 * @return void
+	 */
+	public function test_delete_all_scoped_to_current_issuer() {
+		global $wpdb;
+
+		$wpdb           = Mockery::mock( 'wpdb' );
+		$wpdb->usermeta = 'wp_usermeta';
+		$wpdb->expects( 'esc_like' )->with( self::META_KEY_DEFAULT )->andReturn( self::META_KEY_DEFAULT );
+		$wpdb->expects( 'prepare' )->with(
+			'DELETE FROM wp_usermeta WHERE meta_key LIKE %s',
+			self::META_KEY_DEFAULT . '%',
+		)->andReturn( 'PREPARED' );
+		$wpdb->expects( 'query' )->with( 'PREPARED' )->andReturn( 0 );
+
+		$this->instance->delete_all();
+	}
+
+	/**
+	 * Tests that delete_all_issuers ignores the issuer key.
+	 *
+	 * @covers ::delete_all_issuers
+	 *
+	 * @return void
+	 */
+	public function test_delete_all_issuers_purges_every_issuer() {
+		global $wpdb;
+
+		$bare_prefix    = '_wpseo_myyoast_user_tokens_';
+		$wpdb           = Mockery::mock( 'wpdb' );
+		$wpdb->usermeta = 'wp_usermeta';
+		$wpdb->expects( 'esc_like' )->with( $bare_prefix )->andReturn( $bare_prefix );
+		$wpdb->expects( 'prepare' )->with(
+			'DELETE FROM wp_usermeta WHERE meta_key LIKE %s',
+			$bare_prefix . '%',
+		)->andReturn( 'PREPARED' );
+		$wpdb->expects( 'query' )->with( 'PREPARED' )->andReturn( 0 );
+
+		$this->instance->delete_all_issuers();
+	}
 }

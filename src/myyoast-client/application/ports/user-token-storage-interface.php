@@ -57,9 +57,19 @@ interface User_Token_Storage_Interface {
 	public function get_all( int $user_id ): array;
 
 	/**
-	 * Deletes all stored user token sets across all users and resource buckets.
+	 * Deletes every stored user token set across all users and resource buckets for the current issuer.
 	 *
 	 * @return void
 	 */
 	public function delete_all(): void;
+
+	/**
+	 * Deletes every stored user token set across all users, issuers, and resource buckets.
+	 *
+	 * Intended for full plugin cleanup on uninstall, where any token bucket
+	 * for any issuer that this site ever connected to should be purged.
+	 *
+	 * @return void
+	 */
+	public function delete_all_issuers(): void;
 }
