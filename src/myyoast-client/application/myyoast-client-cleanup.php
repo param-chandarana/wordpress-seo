@@ -74,7 +74,7 @@ class MyYoast_Client_Cleanup implements LoggerAwareInterface {
 		}
 
 		$this->user_token_storage->delete_all();
-		$this->token_storage->delete();
+		$this->token_storage->delete_all();
 		$this->client_registration->delete_local_data();
 	}
 }

@@ -82,7 +82,7 @@ final class MyYoast_Client_Cleanup_Test extends TestCase {
 			->once();
 
 		$this->token_storage
-			->expects( 'delete' )
+			->expects( 'delete_all' )
 			->once();
 
 		$this->client_registration
@@ -110,7 +110,7 @@ final class MyYoast_Client_Cleanup_Test extends TestCase {
 			->once();
 
 		$this->token_storage
-			->expects( 'delete' )
+			->expects( 'delete_all' )
 			->once();
 
 		$this->client_registration
