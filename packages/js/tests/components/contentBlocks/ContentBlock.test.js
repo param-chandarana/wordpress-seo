@@ -34,15 +34,17 @@ jest.mock( "../../../src/components/contentBlocks/AddBlockButton", () => ( {
 	),
 } ) );
 
-jest.mock( "@heroicons/react/solid/LockClosedIcon", () => {
-	const LockClosedIcon = ( props ) => <div data-testid="lock-icon" { ...props } />;
-	return LockClosedIcon;
-} );
+jest.mock( "@heroicons/react/solid", () => ( {
+	LockClosedIcon: ( props ) => (
+		<div data-testid="lock-icon" { ...props } />
+	),
+} ) );
 
-jest.mock( "@heroicons/react/outline/CheckIcon", () => {
-	const CheckIcon = ( props ) => <div data-testid="check-icon" { ...props } />;
-	return CheckIcon;
-} );
+jest.mock( "@heroicons/react/outline", () => ( {
+	CheckIcon: ( props ) => (
+		<div data-testid="check-icon" { ...props } />
+	),
+} ) );
 
 describe( "ContentBlock", () => {
 	const defaultProps = {
@@ -51,7 +53,6 @@ describe( "ContentBlock", () => {
 		isPremiumBlock: false,
 		hasNewBadgeLabel: false,
 		renderNewBadgeLabel: jest.fn( () => <span data-testid="new-badge">New</span> ),
-		location: "sidebar",
 	};
 
 	beforeEach( () => {
