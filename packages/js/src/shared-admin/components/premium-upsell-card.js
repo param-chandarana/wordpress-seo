@@ -1,5 +1,4 @@
-import CheckCircleIcon from "@heroicons/react/solid/CheckCircleIcon";
-import ArrowNarrowRightIcon from "@heroicons/react/solid/ArrowNarrowRightIcon";
+import { CheckCircleIcon, ArrowNarrowRightIcon } from "@heroicons/react/solid";
 import { useMemo } from "@wordpress/element";
 import { __, sprintf } from "@wordpress/i18n";
 import { getPremiumBenefits, getWooSeoBenefits } from "../../helpers/get-premium-benefits";
