@@ -1,8 +1,6 @@
 /* eslint-disable react/jsx-max-depth */
 import { Transition } from "@headlessui/react";
-import ColorSwatchIcon from "@heroicons/react/outline/ColorSwatchIcon";
-import DesktopComputerIcon from "@heroicons/react/outline/DesktopComputerIcon";
-import NewspaperIcon from "@heroicons/react/outline/NewspaperIcon";
+import { ColorSwatchIcon, DesktopComputerIcon, NewspaperIcon } from "@heroicons/react/outline";
 import { useSelect } from "@wordpress/data";
 import { useCallback, useEffect } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";

@@ -1,5 +1,4 @@
-import ChevronDownIcon from "@heroicons/react/solid/ChevronDownIcon";
-import ChevronUpIcon from "@heroicons/react/solid/ChevronUpIcon";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/solid";
 import { useCallback } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
 import { useSvgAria } from "@yoast/ui-library";

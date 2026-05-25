@@ -1,7 +1,6 @@
 /* eslint-disable complexity */
 import { Combobox } from "@headlessui/react";
-import SearchIcon from "@heroicons/react/outline/SearchIcon";
-import XIcon from "@heroicons/react/outline/XIcon";
+import { SearchIcon, XIcon } from "@heroicons/react/outline";
 import { useCallback, useMemo, useRef, useState } from "@wordpress/element";
 import { __, _n, sprintf } from "@wordpress/i18n";
 import { Code, Modal, Title, useNavigationContext, useSvgAria, useToggleState } from "@yoast/ui-library";

@@ -1,7 +1,6 @@
 import { __ } from "@wordpress/i18n";
 import { Button } from "@yoast/ui-library";
-import ChevronUpIcon from "@heroicons/react/outline/ChevronUpIcon";
-import ChevronDownIcon from "@heroicons/react/outline/ChevronDownIcon";
+import { ChevronUpIcon, ChevronDownIcon } from "@heroicons/react/outline";
 
 /**
  * Site feature description component.
