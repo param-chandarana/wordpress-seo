@@ -1,6 +1,6 @@
 /* eslint-disable complexity */
 /* External dependencies */
-import ShareIcon from "@heroicons/react/solid/ShareIcon";
+import { ShareIcon } from "@heroicons/react/solid";
 import { __ } from "@wordpress/i18n";
 import { Fragment } from "@wordpress/element";
 import PropTypes from "prop-types";
