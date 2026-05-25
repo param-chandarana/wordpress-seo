@@ -1,7 +1,7 @@
 import { render } from "../../test-utils";
 import { AlertsTitle } from "../../../src/general/components/alerts-title";
 import { AlertsContext } from "../../../src/general/contexts/alerts-context";
-import BellIcon from "@heroicons/react/outline/BellIcon";
+import { BellIcon } from "@heroicons/react/outline";
 
 const notificationsTheme = {
 	Icon: BellIcon,
