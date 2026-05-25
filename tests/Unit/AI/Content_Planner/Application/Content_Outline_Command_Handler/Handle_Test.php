@@ -235,6 +235,31 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 	}
 
 	/**
+	 * Tests the handle method revokes consent and rethrows when Forbidden_Exception is thrown while fetching the access token.
+	 *
+	 * @return void
+	 */
+	public function test_handle_revokes_consent_on_forbidden_during_token_fetch() {
+		$command = $this->build_command();
+
+		$post_list = Mockery::mock( Post_List::class );
+
+		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
+		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
+		$this->token_manager
+			->expects( 'get_or_request_access_token' )
+			->once()
+			->andThrow( new Forbidden_Exception( 'NOPE', 403 ) );
+
+		$this->consent_handler->expects( 'revoke_consent' )->once()->with( 1 );
+
+		$this->expectException( Forbidden_Exception::class );
+		$this->expectExceptionMessage( 'CONSENT_REVOKED' );
+
+		$this->instance->handle( $command );
+	}
+
+	/**
 	 * Tests that handle() returns an empty Section_List when the response body is invalid JSON.
 	 *
 	 * @return void
