@@ -1,7 +1,6 @@
 /* eslint-disable complexity */
-import LockOpenIcon from "@heroicons/react/outline/LockOpenIcon";
-import ArrowSmRightIcon from "@heroicons/react/solid/ArrowSmRightIcon";
-import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import { LockOpenIcon } from "@heroicons/react/outline";
+import { ArrowSmRightIcon, CheckIcon } from "@heroicons/react/solid";
 import { useSelect } from "@wordpress/data";
 import { __ } from "@wordpress/i18n";
 import { Badge, Button, Link } from "@yoast/ui-library";
