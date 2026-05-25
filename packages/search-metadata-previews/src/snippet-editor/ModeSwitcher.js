@@ -1,8 +1,8 @@
 // External dependencies.
 import React, { useCallback } from "react";
 import { __ } from "@wordpress/i18n";
-import DeviceMobileIcon from "@heroicons/react/outline/DeviceMobileIcon";
-import DesktopComputerIcon from "@heroicons/react/solid/DesktopComputerIcon";
+import { DeviceMobileIcon } from "@heroicons/react/outline";
+import { DesktopComputerIcon } from "@heroicons/react/solid";
 
 // Yoast dependencies.
 import { Label, Toggle, Root, useSvgAria } from "@yoast/ui-library";

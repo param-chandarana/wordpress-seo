@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { __, sprintf } from "@wordpress/i18n";
 import { Alert, Button } from "@yoast/ui-library";
-import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
+import { ArrowNarrowRightIcon } from "@heroicons/react/outline";
 
 /**
  * Display the message for a request that has reached the limit.

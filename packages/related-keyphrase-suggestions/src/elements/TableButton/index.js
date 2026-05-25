@@ -1,10 +1,7 @@
 import React, { forwardRef } from "react";
 import classNames from "classnames";
 import PropTypes from "prop-types";
-import TrashIcon from "@heroicons/react/outline/TrashIcon";
-import PlusIcon from "@heroicons/react/outline/PlusIcon";
-import CheckIcon from "@heroicons/react/outline/CheckIcon";
-import XIcon from "@heroicons/react/outline/XIcon";
+import { TrashIcon, PlusIcon, CheckIcon, XIcon } from "@heroicons/react/outline";
 import { Button } from "@yoast/ui-library";
 import { __ } from "@wordpress/i18n";
 
