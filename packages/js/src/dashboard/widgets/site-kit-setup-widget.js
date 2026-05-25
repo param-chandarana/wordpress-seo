@@ -1,7 +1,5 @@
-import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
-import TrashIcon from "@heroicons/react/outline/TrashIcon";
-import XIcon from "@heroicons/react/outline/XIcon";
-import CheckCircleIcon from "@heroicons/react/solid/CheckCircleIcon";
+import { ArrowNarrowRightIcon, TrashIcon, XIcon } from "@heroicons/react/outline";
+import { CheckCircleIcon } from "@heroicons/react/solid";
 import { useCallback, useEffect } from "@wordpress/element";
 import { __, sprintf } from "@wordpress/i18n";
 import { Widget } from "@yoast/dashboard-frontend";

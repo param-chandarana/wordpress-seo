@@ -1,8 +1,6 @@
 /* eslint-disable complexity */
 import { Button } from "@yoast/ui-library";
-import TrashIcon from "@heroicons/react/outline/TrashIcon";
-import PlusIcon from "@heroicons/react/outline/PlusIcon";
-import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
+import { TrashIcon, PlusIcon, ArrowNarrowRightIcon } from "@heroicons/react/outline";
 import { useCallback } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
 

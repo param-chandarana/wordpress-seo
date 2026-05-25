@@ -1,8 +1,8 @@
-import ExternalLinkIcon from "@heroicons/react/solid/ExternalLinkIcon";
+import { ExternalLinkIcon } from "@heroicons/react/solid";
 import { __, sprintf } from "@wordpress/i18n";
 import { get } from "lodash";
 import { Button } from "@yoast/ui-library";
-import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
+import { ArrowNarrowRightIcon } from "@heroicons/react/outline";
 
 /**
  * Goes to the Dashboard tab by clicking the tab button.

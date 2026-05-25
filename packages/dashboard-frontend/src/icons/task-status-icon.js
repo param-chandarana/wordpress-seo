@@ -1,4 +1,4 @@
-import CheckCircleIcon from "@heroicons/react/outline/CheckCircleIcon";
+import { CheckCircleIcon } from "@heroicons/react/outline";
 import { EllipseWithInnerDot } from ".";
 import { __ } from "@wordpress/i18n";
 

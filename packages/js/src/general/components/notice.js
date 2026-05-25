@@ -1,4 +1,4 @@
-import XIcon from "@heroicons/react/outline/XIcon";
+import { XIcon } from "@heroicons/react/outline";
 import { useDispatch } from "@wordpress/data";
 import { useCallback } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";

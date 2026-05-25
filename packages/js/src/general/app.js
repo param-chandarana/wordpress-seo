@@ -1,8 +1,5 @@
 import { Transition } from "@headlessui/react";
-import AdjustmentsIcon from "@heroicons/react/outline/AdjustmentsIcon";
-import BellIcon from "@heroicons/react/outline/BellIcon";
-import ChartPieIcon from "@heroicons/react/outline/ChartPieIcon";
-import ClipboardCheckIcon from "@heroicons/react/outline/ClipboardCheckIcon";
+import { AdjustmentsIcon, BellIcon, ChartPieIcon, ClipboardCheckIcon } from "@heroicons/react/outline";
 import { useDispatch, useSelect } from "@wordpress/data";
 import { useCallback, useEffect } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
