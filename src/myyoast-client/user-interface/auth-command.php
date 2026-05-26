@@ -733,9 +733,9 @@ final class Auth_Command implements Command_Interface, Loadable_Interface {
 	 *
 	 * @param Token_Set[] $token_sets The token sets.
 	 *
-	 * @return array<int, array<string, string|int>>|string The inventory, or a placeholder when empty.
+	 * @return array<int, array<string, string|int>> The inventory.
 	 */
-	private function build_token_inventory( array $token_sets ) {
+	private function build_token_inventory( array $token_sets ): array {
 		$inventory = [];
 		foreach ( $token_sets as $token_set ) {
 			$inventory[] = $this->build_token_info( $token_set );
