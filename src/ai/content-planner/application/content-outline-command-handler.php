@@ -5,6 +5,7 @@ namespace Yoast\WP\SEO\AI\Content_Planner\Application;
 
 use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
 use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Outline_Parameters;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Section;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Section_List;
 use Yoast\WP\SEO\AI\Content_Planner\Infrastructure\Recent_Content\Recent_Content_Collector;
@@ -12,7 +13,6 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
 /**
@@ -102,23 +102,16 @@ class Content_Outline_Command_Handler {
 			$content['about_page'] = $about_page;
 		}
 
-		$request_body = [
-			'subject' => [
-				'language' => $command->get_language(),
-				'content'  => $content,
-			],
-		];
+		$parameters = new Content_Outline_Parameters(
+			$command->get_user(),
+			$command->get_language(),
+			$content,
+			$command->get_editor(),
+		);
 
 		try {
 			$sender   = $this->ai_request_sender_factory->create( $command->get_user() );
-			$response = $sender->send(
-				new Request(
-					'/content-planner/next-post-outline',
-					$request_body,
-					[ 'X-Yst-Cohort' => $command->get_editor() ],
-				),
-				$command->get_user(),
-			);
+			$response = $sender->get_content_outline_suggestions( $parameters );
 		} catch ( Insufficient_Scope_Exception | OAuth_Forbidden_Exception $exception ) {
 			// OAuth-side 4xxs are deployment/policy problems, not consent revocation.
 			throw $exception;

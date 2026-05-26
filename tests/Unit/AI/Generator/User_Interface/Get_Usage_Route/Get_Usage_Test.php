@@ -53,7 +53,7 @@ final class Get_Usage_Test extends Abstract_Get_Usage_Route_Test {
 			->andReturn( true );
 
 		$this->ai_request_sender_factory->expects( 'create' )->once()->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andReturn( $http_response );
+		$this->ai_request_sender->expects( 'get_usage' )->once()->andReturn( $http_response );
 
 		$http_response
 			->expects( 'get_body' )
@@ -101,7 +101,7 @@ final class Get_Usage_Test extends Abstract_Get_Usage_Route_Test {
 			->andReturn( true );
 
 		$this->ai_request_sender_factory->expects( 'create' )->once()->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( $request_exception );
+		$this->ai_request_sender->expects( 'get_usage' )->once()->andThrow( $request_exception );
 
 		$request_exception
 			->expects( 'get_error_identifier' )
@@ -156,7 +156,7 @@ final class Get_Usage_Test extends Abstract_Get_Usage_Route_Test {
 			->andReturn( true );
 
 		$this->ai_request_sender_factory->expects( 'create' )->once()->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( $request_exception );
+		$this->ai_request_sender->expects( 'get_usage' )->once()->andThrow( $request_exception );
 
 		$request_exception
 			->expects( 'get_error_identifier' )

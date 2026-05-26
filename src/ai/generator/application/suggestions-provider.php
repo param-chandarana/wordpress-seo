@@ -10,6 +10,7 @@ use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
 use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestion;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Bucket;
+use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
@@ -21,7 +22,6 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Request_Timeout_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Service_Unavailable_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Too_Many_Requests_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
 /**
@@ -91,27 +91,19 @@ class Suggestions_Provider {
 		string $platform,
 		string $editor
 	): array {
-		$request_body = [
-			'service' => 'openai',
-			'user_id' => (string) $user->ID,
-			'subject' => [
-				'content'         => $prompt_content,
-				'focus_keyphrase' => $focus_keyphrase,
-				'language'        => $language,
-				'platform'        => $platform,
-			],
-		];
+		$parameters = new Suggestions_Parameters(
+			$user,
+			$suggestion_type,
+			$prompt_content,
+			$focus_keyphrase,
+			$language,
+			$platform,
+			$editor,
+		);
 
 		try {
 			$sender   = $this->ai_request_sender_factory->create( $user );
-			$response = $sender->send(
-				new Request(
-					"/openai/suggestions/$suggestion_type",
-					$request_body,
-					[ 'X-Yst-Cohort' => $editor ],
-				),
-				$user,
-			);
+			$response = $sender->get_suggestions( $parameters );
 		} catch ( Insufficient_Scope_Exception | OAuth_Forbidden_Exception $exception ) {
 			// OAuth-side 4xxs are deployment/policy problems, not consent revocation.
 			// Surface them unchanged so the consent flow doesn't fire incorrectly.

@@ -6,6 +6,7 @@ namespace Yoast\WP\SEO\Tests\Unit\AI\Generator\Application\Suggestions_Provider;
 
 use Mockery;
 use WP_User;
+use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
@@ -31,7 +32,17 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 		$http_response = Mockery::mock( Response::class );
 
 		$this->ai_request_sender_factory->expects( 'create' )->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andReturn( $http_response );
+		$this->ai_request_sender
+			->expects( 'get_suggestions' )
+			->once()
+			->with(
+				Mockery::on(
+					static function ( $parameters ) use ( $user ) {
+						return self::parameters_match_expected_shape( $parameters, $user );
+					},
+				),
+			)
+			->andReturn( $http_response );
 
 		$http_response
 			->expects( 'get_body' )
@@ -41,12 +52,12 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 
 		$suggestions_array = $this->instance->get_suggestions(
 			$user,
-			'test',
-			'',
-			'',
-			'',
-			'',
-			'',
+			'seo-title',
+			'The article excerpt.',
+			'AI usage',
+			'en_US',
+			'web',
+			'gutenberg',
 		);
 
 		$this->assertArrayHasKey( 0, $suggestions_array );
@@ -64,7 +75,11 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 		$user->ID = 1;
 
 		$this->ai_request_sender_factory->expects( 'create' )->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( new Forbidden_Exception() );
+		$this->ai_request_sender
+			->expects( 'get_suggestions' )
+			->once()
+			->with( Mockery::type( Suggestions_Parameters::class ) )
+			->andThrow( new Forbidden_Exception() );
 
 		$this->consent_handler->expects( 'revoke_consent' )
 			->once()
@@ -96,7 +111,11 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 		$user->ID = 1;
 
 		$this->ai_request_sender_factory->expects( 'create' )->with( $user )->andReturn( $this->ai_request_sender );
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
+		$this->ai_request_sender
+			->expects( 'get_suggestions' )
+			->once()
+			->with( Mockery::type( Suggestions_Parameters::class ) )
+			->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
 
 		$this->consent_handler->shouldNotReceive( 'revoke_consent' );
 
@@ -111,5 +130,27 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 			'',
 			'',
 		);
+	}
+
+	/**
+	 * Asserts that the given parameters match what get_suggestions was invoked with on the happy path.
+	 *
+	 * @param mixed   $parameters The parameters to inspect.
+	 * @param WP_User $user       The expected user.
+	 *
+	 * @return bool True when the parameters match the expected shape.
+	 */
+	private static function parameters_match_expected_shape( $parameters, WP_User $user ): bool {
+		if ( ! $parameters instanceof Suggestions_Parameters ) {
+			return false;
+		}
+
+		return $parameters->get_user() === $user
+			&& $parameters->get_suggestion_type() === 'seo-title'
+			&& $parameters->get_prompt_content() === 'The article excerpt.'
+			&& $parameters->get_focus_keyphrase() === 'AI usage'
+			&& $parameters->get_language() === 'en_US'
+			&& $parameters->get_platform() === 'web'
+			&& $parameters->get_editor() === 'gutenberg';
 	}
 }

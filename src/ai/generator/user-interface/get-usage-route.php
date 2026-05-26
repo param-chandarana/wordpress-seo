@@ -6,10 +6,10 @@ namespace Yoast\WP\SEO\AI\Generator\User_Interface;
 use WP_REST_Response;
 use WPSEO_Addon_Manager;
 use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
+use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Too_Many_Requests_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\Conditionals\AI_Conditional;
 use Yoast\WP\SEO\Conditionals\New_Premium_Or_Free_AI_Conditional;
 use Yoast\WP\SEO\Main;
@@ -108,10 +108,10 @@ class Get_Usage_Route implements Route_Interface {
 		$is_woo_product_entity = $request->get_param( 'is_woo_product_entity' );
 		$user                  = \wp_get_current_user();
 		try {
-			$action_path = $this->get_action_path( $is_woo_product_entity );
-			$sender      = $this->ai_request_sender_factory->create( $user );
-			$response    = $sender->send( new Request( $action_path, [], [], false ), $user );
-			$data        = \json_decode( $response->get_body() );
+			$parameters = new Usage_Parameters( $user, $this->is_unlimited( $is_woo_product_entity ) );
+			$sender     = $this->ai_request_sender_factory->create( $user );
+			$response   = $sender->get_usage( $parameters );
+			$data       = \json_decode( $response->get_body() );
 		} catch ( Remote_Request_Exception | WP_Request_Exception $e ) {
 			$message = [
 				'errorMessage'    => $e->getMessage(),
@@ -131,20 +131,16 @@ class Get_Usage_Route implements Route_Interface {
 	}
 
 	/**
-	 * Get action path for the request.
+	 * Whether the current request qualifies for unlimited usage.
 	 *
 	 * @param bool $is_woo_product_entity Whether the request is for a WooCommerce product entity.
 	 *
-	 * @return string The action path.
+	 * @return bool True when the user has the relevant subscription.
 	 */
-	public function get_action_path( $is_woo_product_entity = false ): string {
-		$unlimited = '/usage/' . \gmdate( 'Y-m' );
-		if ( $is_woo_product_entity && $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::WOOCOMMERCE_SLUG ) ) {
-			return $unlimited;
+	public function is_unlimited( $is_woo_product_entity = false ): bool {
+		if ( $is_woo_product_entity ) {
+			return $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::WOOCOMMERCE_SLUG );
 		}
-		if ( ! $is_woo_product_entity && $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::PREMIUM_SLUG ) ) {
-			return $unlimited;
-		}
-		return '/usage/free-usages';
+		return $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::PREMIUM_SLUG );
 	}
 }

@@ -7,11 +7,11 @@ namespace Yoast\WP\SEO\Tests\Unit\AI\Content_Planner\Application\Content_Outline
 use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Content_Planner\Application\Content_Outline_Command;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Outline_Parameters;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Post_List;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Section_List;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
 /**
@@ -58,7 +58,7 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 	}
 
 	/**
-	 * Tests the handle method on the happy path, including the about_page being merged into the request body.
+	 * Tests the handle method on the happy path, including the about_page being merged into the content payload.
 	 *
 	 * @return void
 	 */
@@ -84,14 +84,17 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 		$this->recent_content_collector->expects( 'collect' )->once()->with( 'post' )->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->with( 'post' )->andReturn( $about_page );
 
-		$this->ai_request_sender->expects( 'send' )->once()->with(
-			Mockery::on(
-				static function ( $request ) use ( $about_page ) {
-					return self::request_matches_expected_shape( $request, $about_page );
-				},
-			),
-			$command->get_user(),
-		)->andReturn( new Response( self::RESPONSE_BODY, 200, '' ) );
+		$this->ai_request_sender
+			->expects( 'get_content_outline_suggestions' )
+			->once()
+			->with(
+				Mockery::on(
+					static function ( $parameters ) use ( $command, $about_page ) {
+						return self::parameters_match_expected_shape( $parameters, $command->get_user(), $about_page );
+					},
+				),
+			)
+			->andReturn( new Response( self::RESPONSE_BODY, 200, '' ) );
 
 		$result = $this->instance->handle( $command );
 
@@ -110,7 +113,7 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 	}
 
 	/**
-	 * Tests the handle method without an about_page; the key should be absent from the request body.
+	 * Tests the handle method without an about_page; the key should be absent from the content payload.
 	 *
 	 * @return void
 	 */
@@ -124,20 +127,17 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
 
 		$this->ai_request_sender
-			->expects( 'send' )
+			->expects( 'get_content_outline_suggestions' )
 			->once()
 			->with(
 				Mockery::on(
-					static function ( $request ) {
-						if ( ! $request instanceof Request ) {
+					static function ( $parameters ) {
+						if ( ! $parameters instanceof Content_Outline_Parameters ) {
 							return false;
 						}
-						$content = ( $request->get_body()['subject']['content'] ?? [] );
-
-						return ! \array_key_exists( 'about_page', $content );
+						return ! \array_key_exists( 'about_page', $parameters->get_content() );
 					},
 				),
-				Mockery::any(),
 			)
 			->andReturn( new Response( self::RESPONSE_BODY, 200, '' ) );
 
@@ -160,7 +160,10 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
 
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( new Forbidden_Exception( 'NOPE', 403 ) );
+		$this->ai_request_sender
+			->expects( 'get_content_outline_suggestions' )
+			->once()
+			->andThrow( new Forbidden_Exception( 'NOPE', 403 ) );
 
 		$this->consent_handler->expects( 'revoke_consent' )->once()->with( 1 );
 
@@ -185,7 +188,10 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
 
-		$this->ai_request_sender->expects( 'send' )->once()->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
+		$this->ai_request_sender
+			->expects( 'get_content_outline_suggestions' )
+			->once()
+			->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
 
 		$this->consent_handler->shouldNotReceive( 'revoke_consent' );
 
@@ -207,7 +213,10 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 
 		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
-		$this->ai_request_sender->expects( 'send' )->once()->andReturn( new Response( 'not json', 200, '' ) );
+		$this->ai_request_sender
+			->expects( 'get_content_outline_suggestions' )
+			->once()
+			->andReturn( new Response( 'not json', 200, '' ) );
 
 		$result = $this->instance->handle( $command );
 
@@ -227,7 +236,10 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 
 		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
-		$this->ai_request_sender->expects( 'send' )->once()->andReturn( new Response( '{"something_else":[]}', 200, '' ) );
+		$this->ai_request_sender
+			->expects( 'get_content_outline_suggestions' )
+			->once()
+			->andReturn( new Response( '{"something_else":[]}', 200, '' ) );
 
 		$result = $this->instance->handle( $command );
 
@@ -248,7 +260,7 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
 		$this->ai_request_sender
-			->expects( 'send' )
+			->expects( 'get_content_outline_suggestions' )
 			->once()
 			->andReturn( new Response( '{"choices":[{"subheading_text":"Only heading"},{"content_notes":["only notes"]}]}', 200, '' ) );
 
@@ -272,35 +284,29 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 	}
 
 	/**
-	 * Asserts that the given Request matches the expected shape produced by the handler.
+	 * Asserts that the given parameters match the expected shape produced by the handler.
 	 *
-	 * The Authorization header is no longer set on the Request — the auth strategy attaches it on dispatch — so
-	 * this matcher only verifies the auth-agnostic parts of the request shape (path, X-Yst-Cohort, body content).
-	 *
-	 * @param mixed                $request    The request to inspect.
+	 * @param mixed                $parameters The parameters to inspect.
+	 * @param WP_User              $user       The expected user.
 	 * @param array<string, mixed> $about_page The expected about_page payload.
 	 *
-	 * @return bool True when the request matches the expected shape.
+	 * @return bool True when the parameters match the expected shape.
 	 */
-	private static function request_matches_expected_shape( $request, array $about_page ): bool {
-		if ( ! $request instanceof Request ) {
+	private static function parameters_match_expected_shape( $parameters, WP_User $user, array $about_page ): bool {
+		if ( ! $parameters instanceof Content_Outline_Parameters ) {
 			return false;
 		}
-		if ( $request->get_action_path() !== '/content-planner/next-post-outline' ) {
+		if ( $parameters->get_user() !== $user ) {
 			return false;
 		}
-
-		$headers = $request->get_headers();
-		if ( ( $headers['X-Yst-Cohort'] ?? null ) !== 'gutenberg' ) {
+		if ( $parameters->get_language() !== 'en_US' ) {
 			return false;
 		}
-
-		$body = $request->get_body();
-		if ( ( $body['subject']['language'] ?? null ) !== 'en_US' ) {
+		if ( $parameters->get_editor() !== 'gutenberg' ) {
 			return false;
 		}
 
-		$content = ( $body['subject']['content'] ?? [] );
+		$content = $parameters->get_content();
 		if ( ( $content['new_post_metadata'] ?? null ) !== self::expected_metadata() ) {
 			return false;
 		}
