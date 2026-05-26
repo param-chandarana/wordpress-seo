@@ -79,7 +79,7 @@ class AI_Request_Sender implements LoggerAwareInterface {
 			[ 'X-Yst-Cohort' => $parameters->get_editor() ],
 		);
 
-		return $this->dispatch( $request, $parameters->get_user() );
+		return $this->send( $request, $parameters->get_user() );
 	}
 
 	/**
@@ -101,7 +101,7 @@ class AI_Request_Sender implements LoggerAwareInterface {
 			[ 'X-Yst-Cohort' => $parameters->get_editor() ],
 		);
 
-		return $this->dispatch( $request, $parameters->get_user() );
+		return $this->send( $request, $parameters->get_user() );
 	}
 
 	/**
@@ -128,7 +128,7 @@ class AI_Request_Sender implements LoggerAwareInterface {
 			[ 'X-Yst-Cohort' => $parameters->get_editor() ],
 		);
 
-		return $this->dispatch( $request, $user );
+		return $this->send( $request, $user );
 	}
 
 	/**
@@ -142,18 +142,21 @@ class AI_Request_Sender implements LoggerAwareInterface {
 		$action_path = $parameters->is_unlimited() ? '/usage/' . \gmdate( 'Y-m' ) : '/usage/free-usages';
 		$request     = new Request( $action_path, [], [], false );
 
-		return $this->dispatch( $request, $parameters->get_user() );
+		return $this->send( $request, $parameters->get_user() );
 	}
 
 	/**
-	 * Dispatches an authenticated AI request, falling back to the secondary strategy on persistent failure.
+	 * Sends an authenticated AI request, falling back to the secondary strategy on persistent failure.
+	 *
+	 * Kept public for backward compatibility — callers that have a pre-built Request may dispatch it
+	 * directly. New call sites should prefer the named methods above.
 	 *
 	 * @param Request $request The base request, without auth headers.
 	 * @param WP_User $user    The WP user the request is on behalf of.
 	 *
 	 * @return Response The parsed response.
 	 */
-	private function dispatch( Request $request, WP_User $user ): Response {
+	public function send( Request $request, WP_User $user ): Response {
 		try {
 			return $this->primary->send( $request, $user );
 		}

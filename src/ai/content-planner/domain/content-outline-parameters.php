@@ -27,7 +27,7 @@ class Content_Outline_Parameters {
 	/**
 	 * The content payload: new_post_metadata, existing_posts, and optional about_page.
 	 *
-	 * @var array<string, mixed>
+	 * @var array<string>
 	 */
 	private $content;
 
@@ -41,10 +41,10 @@ class Content_Outline_Parameters {
 	/**
 	 * The constructor.
 	 *
-	 * @param WP_User              $user     The user.
-	 * @param string               $language The language code.
-	 * @param array<string, mixed> $content  The content payload.
-	 * @param string               $editor   The editor identifier.
+	 * @param WP_User       $user     The user.
+	 * @param string        $language The language code.
+	 * @param array<string> $content  The content payload.
+	 * @param string        $editor   The editor identifier.
 	 */
 	public function __construct( WP_User $user, string $language, array $content, string $editor ) {
 		$this->user     = $user;
@@ -74,7 +74,7 @@ class Content_Outline_Parameters {
 	/**
 	 * Returns the content payload.
 	 *
-	 * @return array<string, mixed> The content payload.
+	 * @return array<string> The content payload.
 	 */
 	public function get_content(): array {
 		return $this->content;

@@ -73,7 +73,7 @@ final class Handle_Test extends Abstract_Content_Suggestion_Command_Handler_Test
 			->once()
 			->with(
 				Mockery::on(
-					function ( $parameters ) use ( $command, $about_page ) {
+					static function ( $parameters ) use ( $command, $about_page ) {
 						return self::parameters_match_expected_shape( $parameters, $command->get_user(), $about_page );
 					},
 				),

@@ -87,11 +87,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	 *
 	 * @covers ::__construct
 	 * @covers ::get_suggestions
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_returns_response_from_primary(): void {
+	public function test_send_returns_response_from_primary(): void {
 		$response = new Response( '{}', 200, 'OK' );
 
 		$this->primary->expects( 'send' )->with( Mockery::type( Request::class ), $this->user )->andReturn( $response );
@@ -105,11 +105,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	/**
 	 * When the primary throws a Remote_Request_Exception and a fallback is configured, the fallback dispatches.
 	 *
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_falls_back_on_remote_request_exception(): void {
+	public function test_send_falls_back_on_remote_request_exception(): void {
 		$fallback_response = new Response( '{}', 200, 'OK' );
 
 		$this->primary->expects( 'send' )->andThrow( new Unauthorized_Exception( 'oauth-failed', 401 ) );
@@ -123,11 +123,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	/**
 	 * Without a fallback, Remote_Request_Exception propagates.
 	 *
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_rethrows_when_no_fallback(): void {
+	public function test_send_rethrows_when_no_fallback(): void {
 		$this->primary->expects( 'send' )->andThrow( new Unauthorized_Exception( 'no-recovery', 401 ) );
 
 		$sender = new AI_Request_Sender( $this->primary );
@@ -139,11 +139,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	/**
 	 * Insufficient_Scope_Exception always propagates without invoking the fallback.
 	 *
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_propagates_insufficient_scope_without_fallback(): void {
+	public function test_send_propagates_insufficient_scope_without_fallback(): void {
 		$this->primary->expects( 'send' )->andThrow( new Insufficient_Scope_Exception( 'INSUFFICIENT_SCOPE', 403, 'INSUFFICIENT_SCOPE' ) );
 		$this->fallback->shouldNotReceive( 'send' );
 
@@ -156,11 +156,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	/**
 	 * OAuth_Forbidden_Exception always propagates without invoking the fallback.
 	 *
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_propagates_oauth_forbidden_without_fallback(): void {
+	public function test_send_propagates_oauth_forbidden_without_fallback(): void {
 		$this->primary->expects( 'send' )->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
 		$this->fallback->shouldNotReceive( 'send' );
 
@@ -173,11 +173,11 @@ final class AI_Request_Sender_Test extends TestCase {
 	/**
 	 * A plain Forbidden_Exception (not the OAuth-specific subclasses) still falls back when a fallback exists.
 	 *
-	 * @covers ::dispatch
+	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_dispatch_falls_back_on_plain_forbidden(): void {
+	public function test_send_falls_back_on_plain_forbidden(): void {
 		$fallback_response = new Response( '{}', 200, 'OK' );
 
 		$this->primary->expects( 'send' )->andThrow( new Forbidden_Exception( 'forbidden', 403, 'forbidden' ) );
