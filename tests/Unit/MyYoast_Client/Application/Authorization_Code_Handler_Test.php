@@ -14,6 +14,7 @@ use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Discovery_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\ID_Token_Validator_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Discovery_Document;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Registered_Client;
+use Yoast\WP\SEO\MyYoast_Client\Domain\Resource_Indicator;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Token_Set;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
@@ -114,7 +115,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->once()
 			->with( 'myyoast_current_authorization_state', Mockery::type( 'array' ), 600, 1 );
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ] );
+		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], Resource_Indicator::default() );
 
 		$this->assertStringStartsWith( 'https://my.yoast.com/api/oauth/auth?', $url );
 		$this->assertStringContainsString( 'response_type=code', $url );
@@ -123,6 +124,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->assertStringContainsString( 'prompt=consent', $url );
 		$this->assertStringContainsString( 'state=', $url );
 		$this->assertStringNotContainsString( 'nonce=', $url );
+		$this->assertStringNotContainsString( 'resource=', $url );
 	}
 
 	/**
@@ -161,7 +163,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 				1,
 			);
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'openid', 'profile' ] );
+		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'openid', 'profile' ], Resource_Indicator::default() );
 
 		$this->assertStringContainsString( 'nonce=', $url );
 	}
@@ -201,7 +203,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 				1,
 			);
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], 'https://example.com/settings' );
+		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], Resource_Indicator::default(), 'https://example.com/settings' );
 
 		$this->assertStringStartsWith( 'https://my.yoast.com/api/oauth/auth?', $url );
 	}
@@ -337,7 +339,14 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->grant_handler
 			->expects( 'request_token' )
 			->once()
-			->with( Mockery::type( Authorization_Code_Grant::class ) )
+			->with(
+				Mockery::type( Authorization_Code_Grant::class ),
+				Mockery::on(
+					static function ( $indicator ) {
+						return $indicator instanceof Resource_Indicator && $indicator->is_default();
+					},
+				),
+			)
 			->andReturn( $token_set );
 
 		$this->client_registration
@@ -383,7 +392,14 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->grant_handler
 			->expects( 'request_token' )
 			->once()
-			->with( Mockery::type( Authorization_Code_Grant::class ) )
+			->with(
+				Mockery::type( Authorization_Code_Grant::class ),
+				Mockery::on(
+					static function ( $indicator ) {
+						return $indicator instanceof Resource_Indicator && $indicator->is_default();
+					},
+				),
+			)
 			->andReturn( $token_set );
 
 		$this->client_registration
@@ -429,7 +445,14 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->grant_handler
 			->expects( 'request_token' )
 			->once()
-			->with( Mockery::type( Authorization_Code_Grant::class ) )
+			->with(
+				Mockery::type( Authorization_Code_Grant::class ),
+				Mockery::on(
+					static function ( $indicator ) {
+						return $indicator instanceof Resource_Indicator && $indicator->is_default();
+					},
+				),
+			)
 			->andReturn( $token_set );
 
 		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
@@ -484,13 +507,105 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->grant_handler
 			->expects( 'request_token' )
 			->once()
-			->with( Mockery::type( Authorization_Code_Grant::class ) )
+			->with(
+				Mockery::type( Authorization_Code_Grant::class ),
+				Mockery::on(
+					static function ( $indicator ) {
+						return $indicator instanceof Resource_Indicator && $indicator->is_default();
+					},
+				),
+			)
 			->andThrow( new Token_Request_Failed_Exception( 'invalid_grant', 'Authorization code expired.' ) );
 
 		// The strict mock fails the test if mark_site_connected is called without an expectation.
 		$this->expectException( Token_Request_Failed_Exception::class );
 
 		$this->instance->exchange_code( 1, 'auth-code', 'the-state' );
+	}
+
+	/**
+	 * Tests that get_authorization_url includes the resource indicator in the URL and persists it.
+	 *
+	 * @covers ::get_authorization_url
+	 *
+	 * @return void
+	 */
+	public function test_get_authorization_url_with_resource_indicator() {
+		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
+
+		$this->client_registration
+			->expects( 'ensure_registered' )
+			->andReturn( $registered_client );
+
+		$document = new Discovery_Document( $this->get_valid_discovery_response() );
+		$this->discovery->expects( 'get_document' )->andReturn( $document );
+
+		$this->expiring_store
+			->expects( 'persist_for_user' )
+			->once()
+			->with(
+				'myyoast_current_authorization_state',
+				Mockery::on(
+					static function ( $value ) {
+						return \is_array( $value )
+							&& ( $value['resource_indicator'] ?? null ) === 'https://ai.yoa.st';
+					},
+				),
+				600,
+				1,
+			);
+
+		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], new Resource_Indicator( 'https://ai.yoa.st' ) );
+
+		$this->assertStringContainsString( 'resource=https%3A%2F%2Fai.yoa.st', $url );
+	}
+
+	/**
+	 * Tests that exchange_code forwards the stored resource indicator to the grant and grant handler.
+	 *
+	 * @covers ::exchange_code
+	 *
+	 * @return void
+	 */
+	public function test_exchange_code_forwards_resource_indicator() {
+		$this->expiring_store
+			->expects( 'get_for_user' )
+			->once()
+			->andReturn(
+				[
+					'state'              => 'the-state',
+					'code_verifier'      => 'the-verifier',
+					'nonce'              => null,
+					'redirect_uri'       => 'https://example.com/callback',
+					'return_url'         => null,
+					'resource_indicator' => 'https://ai.yoa.st',
+				],
+			);
+
+		$this->expiring_store->expects( 'delete_for_user' )->once();
+
+		$token_set = ( new Token_Set( 'access-tok', ( \time() + 3600 ), 'DPoP', 'refresh-tok' ) )
+			->with_resource_indicator( new Resource_Indicator( 'https://ai.yoa.st' ) );
+
+		$this->grant_handler
+			->expects( 'request_token' )
+			->once()
+			->withArgs(
+				static function ( $grant, $indicator ) {
+					return $grant instanceof Authorization_Code_Grant
+						&& $indicator instanceof Resource_Indicator
+						&& $indicator->value() === 'https://ai.yoa.st';
+				},
+			)
+			->andReturn( $token_set );
+
+		$this->client_registration
+			->expects( 'mark_site_connected' )
+			->once();
+
+		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
+
+		$this->assertSame( 'https://ai.yoa.st', $result->get_resource_indicator()->value() );
 	}
 
 	/**
