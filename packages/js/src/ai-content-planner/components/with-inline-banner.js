@@ -189,12 +189,12 @@ export const withInlineBanner = createHigherOrderComponent( ( BlockListBlock ) =
 			isEditingTemplate: postType === "wp_template" || postType === "wp_template_part" || editor.getRenderingMode() === "template-locked",
 		};
 	}, [ props.clientId ] );
-	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
+	const hasAiStore = useSelect( select => isObject( select( STORE_NAME_AI ) ), [] );
 	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 	const BannerFallback = useCallback( () => <BlockListBlock { ...props } />, [ BlockListBlock, props ] );
 
 	// Non-first blocks, missing AI generator selectors, or template editing: zero additional overhead.
-	if ( ! isFirstBlock || ! isObject( aiGeneratorSelectors ) || isEditingTemplate ) {
+	if ( ! isFirstBlock || ! hasAiStore || isEditingTemplate ) {
 		return <BlockListBlock { ...props } />;
 	}
 
