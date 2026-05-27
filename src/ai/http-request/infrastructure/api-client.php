@@ -67,6 +67,35 @@ class API_Client implements API_Client_Interface {
 	 * @return string The full URL for the request.
 	 */
 	public function get_url( string $action_path ): string {
+		return $this->get_base_url() . $action_path;
+	}
+
+	/**
+	 * Returns the RFC 8707 resource indicator for the AI API: the origin (scheme + host + optional port)
+	 * of the configured base URL, without the path. This is the audience AI access tokens are bound to,
+	 * so it must track the same filter that decides where requests are actually sent.
+	 *
+	 * @return string The AI resource server origin (e.g. https://ai.yoa.st).
+	 */
+	public function get_resource_url(): string {
+		$parsed = \wp_parse_url( $this->get_base_url() );
+		if ( $parsed === false ) {
+			return $this->get_base_url();
+		}
+
+		$scheme = ( $parsed['scheme'] ?? 'https' );
+		$host   = ( $parsed['host'] ?? '' );
+		$port   = isset( $parsed['port'] ) ? ( ':' . $parsed['port'] ) : '';
+
+		return $scheme . '://' . $host . $port;
+	}
+
+	/**
+	 * Resolves the base URL for the AI API, applying the configurable override filter.
+	 *
+	 * @return string The (possibly filtered) base URL, including its path (e.g. https://ai.yoa.st/api/v1).
+	 */
+	private function get_base_url(): string {
 		/**
 		 * Filter: 'Yoast\WP\SEO\ai_api_url' - Replaces the default URL for the AI API with a custom one.
 		 *
@@ -74,9 +103,7 @@ class API_Client implements API_Client_Interface {
 		 *
 		 * @param string $url The default URL for the AI API.
 		 */
-		$url = \apply_filters( 'Yoast\WP\SEO\ai_api_url', $this->base_url );
-
-		return $url . $action_path;
+		return (string) \apply_filters( 'Yoast\WP\SEO\ai_api_url', $this->base_url );
 	}
 
 	/**

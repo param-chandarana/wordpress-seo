@@ -54,7 +54,7 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	 * @return void
 	 */
 	public function test_send_posts_user_id_in_body(): void {
-		$this->myyoast_client->expects( 'get_site_token' )->with( [ 'service:ai:consume' ] )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'get_site_token' )->with( [ 'service:ai:consume' ], 'https://ai.yoa.st' )->andReturn( $this->token_set );
 
 		$this->myyoast_client->expects( 'authenticated_request' )
 			->with(
@@ -199,7 +199,36 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 					],
 				),
 			);
-		$this->myyoast_client->expects( 'clear_site_token' )->once();
+		$this->myyoast_client->expects( 'clear_site_token' )->with( 'https://ai.yoa.st' )->once();
+
+		$this->expectException( Unauthorized_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+	}
+
+	/**
+	 * The resource indicator passed to MyYoast tracks API_Client::get_resource_url(), so a filter
+	 * override flows through to both the token request and the 401 cache clear in lockstep.
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_binds_token_to_api_client_resource_url(): void {
+		$this->api_client->shouldReceive( 'get_resource_url' )->andReturn( 'https://ai-dev.yoa.st' );
+
+		$this->myyoast_client->expects( 'get_site_token' )->with( [ 'service:ai:consume' ], 'https://ai-dev.yoa.st' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					401,
+					[],
+					[
+						'message'    => 'token expired',
+						'error_code' => 'invalid_token',
+					],
+				),
+			);
+		$this->myyoast_client->expects( 'clear_site_token' )->with( 'https://ai-dev.yoa.st' )->once();
 
 		$this->expectException( Unauthorized_Exception::class );
 		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );

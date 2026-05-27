@@ -88,6 +88,7 @@ abstract class Abstract_OAuth_Auth_Strategy_Test extends TestCase {
 				},
 			)
 			->byDefault();
+		$this->api_client->shouldReceive( 'get_resource_url' )->andReturn( 'https://ai.yoa.st' )->byDefault();
 		$this->api_client->shouldReceive( 'get_request_timeout' )->andReturn( 60 )->byDefault();
 
 		$this->instance = new OAuth_Auth_Strategy( $this->myyoast_client, $this->api_client, $this->response_validator );

@@ -94,8 +94,10 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 * @throws Unauthorized_Exception         When the response is a 401 (cached site token is cleared before rethrowing).
 	 */
 	public function send( Request $request, WP_User $user ): Response {
+		$resource = $this->api_client->get_resource_url();
+
 		try {
-			$token_set = $this->myyoast_client->get_site_token( [ self::AI_SCOPE ] );
+			$token_set = $this->myyoast_client->get_site_token( [ self::AI_SCOPE ], $resource );
 		} catch ( Token_Request_Failed_Exception | Token_Storage_Exception $exception ) {
 			$this->logger->warning( 'OAuth send: site token unavailable ({error}); surfacing as OAUTH_TOKEN_UNAVAILABLE.', [ 'error' => $exception->getMessage() ] );
 			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception data, not output.
@@ -128,7 +130,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 		} catch ( Unauthorized_Exception $exception ) {
 			// Stale cached site token; drop it so the next request fetches a fresh one. No in-call retry.
 			$this->logger->debug( 'OAuth send: 401 from yoast-ai; clearing cached site token before rethrowing.' );
-			$this->myyoast_client->clear_site_token();
+			$this->myyoast_client->clear_site_token( $resource );
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
 			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception data, not output.
