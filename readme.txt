@@ -307,6 +307,8 @@ Your question has most likely been answered on our help center: [yoast.com/help/
 
 Release date: 2026-05-27
 
+Yoast SEO 27.7 brings more enhancements and bugfixes. [Find more information about our software releases and updates here](https://yoa.st/releases).
+
 #### Bugfixes
 
 * Fixes a bug in Schema aggregator where products Schema pieces had incorrect `@id` values for `mainEntityOfPage` and `image` properties.
