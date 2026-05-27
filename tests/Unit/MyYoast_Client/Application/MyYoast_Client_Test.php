@@ -11,7 +11,6 @@ use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Token_Storage_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client;
 use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Grant_Handler;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Client_Registration_Interface;
-use Yoast\WP\SEO\MyYoast_Client\Application\Ports\DPoP_Proof_Provider_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\OAuth_Server_Client_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Site_URL_Provider_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Token_Storage_Interface;
@@ -94,13 +93,6 @@ final class MyYoast_Client_Test extends TestCase {
 	private $http_client;
 
 	/**
-	 * The DPoP proof provider mock.
-	 *
-	 * @var DPoP_Proof_Provider_Interface|Mockery\MockInterface
-	 */
-	private $dpop_proof_provider;
-
-	/**
 	 * Set up the test fixtures.
 	 *
 	 * @return void
@@ -120,8 +112,6 @@ final class MyYoast_Client_Test extends TestCase {
 		$site_url_provider = Mockery::mock( Site_URL_Provider_Interface::class );
 		$site_url_provider->allows( 'get' )->andReturn( 'https://example.com/' );
 
-		$this->dpop_proof_provider = Mockery::mock( DPoP_Proof_Provider_Interface::class );
-
 		$this->instance = new MyYoast_Client(
 			$this->client_registration,
 			$this->auth_code_handler,
@@ -132,7 +122,6 @@ final class MyYoast_Client_Test extends TestCase {
 			$this->token_storage,
 			$this->user_token_storage,
 			$site_url_provider,
-			$this->dpop_proof_provider,
 		);
 	}
 
