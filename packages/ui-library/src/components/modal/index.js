@@ -1,5 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react";
-import { XIcon } from "@heroicons/react/outline";
+import XIcon from "@heroicons/react/outline/XIcon";
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef, Fragment } from "react";
