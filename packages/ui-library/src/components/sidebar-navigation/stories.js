@@ -1,4 +1,7 @@
-import { AdjustmentsIcon, ColorSwatchIcon, DesktopComputerIcon, NewspaperIcon } from "@heroicons/react/outline";
+import AdjustmentsIcon from "@heroicons/react/outline/AdjustmentsIcon";
+import ColorSwatchIcon from "@heroicons/react/outline/ColorSwatchIcon";
+import DesktopComputerIcon from "@heroicons/react/outline/DesktopComputerIcon";
+import NewspaperIcon from "@heroicons/react/outline/NewspaperIcon";
 import { useArgs } from "@storybook/preview-api";
 import React, { useCallback, useEffect } from "react";
 import SidebarNavigation from ".";

@@ -1,4 +1,4 @@
-import { DocumentAddIcon } from "@heroicons/react/outline";
+import DocumentAddIcon from "@heroicons/react/outline/DocumentAddIcon";
 import classNames from "classnames";
 import { isEmpty, noop } from "lodash";
 import PropTypes from "prop-types";
