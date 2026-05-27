@@ -1,5 +1,6 @@
 /* eslint-disable complexity */
-import { CheckIcon, XIcon } from "@heroicons/react/solid";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import XIcon from "@heroicons/react/solid/XIcon";
 import { Fragment } from "@wordpress/element";
 import { __, sprintf } from "@wordpress/i18n";
 import { Button } from "@yoast/ui-library";
