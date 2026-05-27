@@ -35,11 +35,11 @@ const getDescription = () => safeCreateInterpolateElement(
  * @param {Function} props.handleChange Change handler. Receives the raw change event from the input.
  * @param {Function} props.onFocusKeyword Focus handler.
  * @param {Function} props.onBlurKeyword Blur handler.
- * @param {Object} props.validation Validation state forwarded to TextField, or null when there are no errors.
+ * @param {Object|null} props.validation Validation state forwarded to TextField, or null when there are no errors.
  *
  * @returns {JSX.Element} The keyphrase TextField.
  */
-export const KeywordInput = ( { location, keyword, handleChange, onFocusKeyword, onBlurKeyword, validation } ) => (
+export const KeywordInput = ( { location, keyword, handleChange, onFocusKeyword, onBlurKeyword, validation = null } ) => (
 	<TextField
 		id={ `focus-keyword-input-${ location }` }
 		label={ __( "Focus keyphrase", "wordpress-seo" ) }
