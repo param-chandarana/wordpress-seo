@@ -305,7 +305,7 @@ Your question has most likely been answered on our help center: [yoast.com/help/
 
 = 27.7 =
 
-Release date: 2026-05-26
+Release date: 2026-05-27
 
 #### Bugfixes
 
