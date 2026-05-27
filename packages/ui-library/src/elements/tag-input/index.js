@@ -1,4 +1,4 @@
-import { XIcon } from "@heroicons/react/solid";
+import XIcon from "@heroicons/react/solid/XIcon";
 import classNames from "classnames";
 import { isString, map, noop } from "lodash";
 import PropTypes from "prop-types";

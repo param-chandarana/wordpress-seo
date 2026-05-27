@@ -1,6 +1,7 @@
 /* eslint-disable no-undefined */
 import { Switch, Transition } from "@headlessui/react";
-import { CheckIcon, XIcon } from "@heroicons/react/solid";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import XIcon from "@heroicons/react/solid/XIcon";
 import classNames from "classnames";
 import { noop } from "lodash";
 import PropTypes from "prop-types";

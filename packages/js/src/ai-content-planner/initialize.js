@@ -68,7 +68,7 @@ export const ContentPlannerEditorPlugin = () => {
 			isBannerRendered: select( CONTENT_PLANNER_STORE ).selectIsBannerRendered(),
 		};
 	}, [] );
-	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
+	const hasAiStore = useSelect( select => isObject( select( STORE_NAME_AI ) ), [] );
 	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 
 	const { insertBlock } = useDispatch( "core/block-editor" );
@@ -83,7 +83,7 @@ export const ContentPlannerEditorPlugin = () => {
 		hasInserted.current = insertFirstParagraph( blocks, insertBlock, isBannerRendered );
 	}, [ blocks, isNewPost, postType, insertBlock, minPostsMet ] );
 
-	if ( ! isObject( aiGeneratorSelectors ) ) {
+	if ( ! hasAiStore ) {
 		return null;
 	}
 	return <ErrorBoundary FallbackComponent={ noop }><App hasConsent={ hasConsent } /></ErrorBoundary>;
