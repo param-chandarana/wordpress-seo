@@ -1,21 +1,23 @@
 import { createBlock } from "@wordpress/blocks";
 import { useSelect, useDispatch } from "@wordpress/data";
+import { addFilter } from "@wordpress/hooks";
 import domReady from "@wordpress/dom-ready";
 import { useEffect, useRef } from "@wordpress/element";
 import { registerPlugin } from "@wordpress/plugins";
-import { get } from "lodash";
+import { get, isObject, noop } from "lodash";
+import { ErrorBoundary } from "@yoast/ui-library";
 import { App } from "./components/app";
 import "./blocks/content-suggestion-block";
 import { CONTENT_PLANNER_STORE } from "./constants";
 import { getIsBannerDismissedFromInput, getIsBannerRenderedFromInput } from "./helpers/fields";
+import { useYoastMetaSync } from "./hooks";
 import { registerStore } from "./store";
 import { AVAILABILITY_NAME } from "./store/availability";
 import { BANNER_NAME } from "./store/banner";
 import { CONTENT_OUTLINE_NAME } from "./store/content-outline";
 import { CONTENT_SUGGESTIONS_NAME } from "./store/content-suggestions";
 import { withInlineBanner } from "./components/with-inline-banner";
-import { addFilter } from "@wordpress/hooks";
-
+import { STORE_NAME_AI } from "../ai-generator/constants";
 
 /**
  * Ensures a fresh post has at least one block in the canvas, so the
@@ -25,9 +27,9 @@ import { addFilter } from "@wordpress/hooks";
  * (which is not a real block), so the filter never fires and the banner only
  * appears once the user starts typing.
  *
- * @param {Array}    blocks      The current list of blocks in the editor.
- * @param {Function} insertBlock The block editor insertBlock dispatch function.
- * @param {boolean} isBannerRendered Whether the banner is rendered already in the post.
+ * @param {Array}    blocks           The current list of blocks in the editor.
+ * @param {Function} insertBlock      The block editor insertBlock dispatch function.
+ * @param {boolean}  isBannerRendered Whether the banner is rendered already in the post.
  * @returns {boolean} Whether the banner insertion is complete.
  */
 export function insertFirstParagraph( blocks, insertBlock, isBannerRendered ) {
@@ -46,28 +48,32 @@ export function insertFirstParagraph( blocks, insertBlock, isBannerRendered ) {
 	return firstParagraphIndex !== -1;
 }
 
-
 /**
- * Editor plugin that auto-inserts the Content Planner Banner component (via the `editor.BlockListBlock` filter) in new posts of the "post" type,
- * after the first paragraph on new posts and renders the shared
- * FeatureModal controlled by the content planner store.
+ * Editor plugin that renders the shared FeatureModal controlled by the content
+ * planner store, syncs Yoast meta fields on undo, and auto-inserts the inline
+ * banner on new posts of the "post" type.
  *
- * @returns {void}
+ * @returns {JSX.Element|null} The editor plugin component.
  */
 export const ContentPlannerEditorPlugin = () => {
 	const hasInserted = useRef( false );
 
 	const { isNewPost, postType, blocks, minPostsMet, isBannerRendered } = useSelect( select => {
+		const coreEditor = select( "core/editor" );
 		return {
-			isNewPost: select( "core/editor" ).isEditedPostNew(),
-			postType: select( "core/editor" ).getCurrentPostType(),
+			isNewPost: coreEditor.isEditedPostNew(),
+			postType: coreEditor.getCurrentPostType(),
 			blocks: select( "core/block-editor" ).getBlocks(),
 			minPostsMet: select( CONTENT_PLANNER_STORE ).selectIsMinPostsMet(),
 			isBannerRendered: select( CONTENT_PLANNER_STORE ).selectIsBannerRendered(),
 		};
 	}, [] );
+	const aiGeneratorSelectors = useSelect( select => select( STORE_NAME_AI ) );
+	const hasConsent = useSelect( select => select( STORE_NAME_AI )?.selectHasAiGeneratorConsent() ?? false );
 
 	const { insertBlock } = useDispatch( "core/block-editor" );
+
+	useYoastMetaSync();
 
 	useEffect( () => {
 		if ( hasInserted.current || ! isNewPost || postType !== "post" || ! minPostsMet ) {
@@ -77,9 +83,10 @@ export const ContentPlannerEditorPlugin = () => {
 		hasInserted.current = insertFirstParagraph( blocks, insertBlock, isBannerRendered );
 	}, [ blocks, isNewPost, postType, insertBlock, minPostsMet ] );
 
-	return (
-		<App />
-	);
+	if ( ! isObject( aiGeneratorSelectors ) ) {
+		return null;
+	}
+	return <ErrorBoundary FallbackComponent={ noop }><App hasConsent={ hasConsent } /></ErrorBoundary>;
 };
 
 /**
