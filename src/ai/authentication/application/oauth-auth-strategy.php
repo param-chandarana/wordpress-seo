@@ -6,6 +6,7 @@ namespace Yoast\WP\SEO\AI\Authentication\Application;
 
 use WP_User;
 use WPSEO_Utils;
+use Yoast\WP\SEO\AI\Authentication\Domain\Exceptions\Auth_Strategy_Unavailable_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Application\Response_Validator;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
@@ -88,10 +89,11 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 *
 	 * @return Response The parsed response.
 	 *
-	 * @throws Bad_Request_Exception          When the site token cannot be acquired, on transport failure, or when the status doesn't match a more specific exception.
-	 * @throws Insufficient_Scope_Exception   When the response is a 403 insufficient_scope, so the sender propagates without falling back.
-	 * @throws OAuth_Forbidden_Exception      When the response is any other 403; bypasses fallback to avoid masking the OAuth config bug with the Token path.
-	 * @throws Unauthorized_Exception         When the response is a 401 (cached site token is cleared before rethrowing).
+	 * @throws Auth_Strategy_Unavailable_Exception When the site token cannot be acquired, so the sender falls back without claiming the request itself failed.
+	 * @throws Bad_Request_Exception               On transport failure, or when the status doesn't match a more specific exception.
+	 * @throws Insufficient_Scope_Exception        When the response is a 403 insufficient_scope, so the sender propagates without falling back.
+	 * @throws OAuth_Forbidden_Exception           When the response is any other 403; bypasses fallback to avoid masking the OAuth config bug with the Token path.
+	 * @throws Unauthorized_Exception              When the response is a 401 (cached site token is cleared before rethrowing).
 	 */
 	public function send( Request $request, WP_User $user ): Response {
 		$resource = $this->api_client->get_resource_url();
@@ -101,7 +103,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 		} catch ( Token_Request_Failed_Exception | Token_Storage_Exception $exception ) {
 			$this->logger->warning( 'OAuth send: site token unavailable ({error}); surfacing as OAUTH_TOKEN_UNAVAILABLE.', [ 'error' => $exception->getMessage() ] );
 			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception data, not output.
-			throw new Bad_Request_Exception( 'OAUTH_TOKEN_UNAVAILABLE', 0, 'OAUTH_TOKEN_UNAVAILABLE', $exception );
+			throw new Auth_Strategy_Unavailable_Exception( 'OAUTH_TOKEN_UNAVAILABLE', 0, 'OAUTH_TOKEN_UNAVAILABLE', $exception );
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 

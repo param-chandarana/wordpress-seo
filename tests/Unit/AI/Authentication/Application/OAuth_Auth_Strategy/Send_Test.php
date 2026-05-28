@@ -7,6 +7,7 @@ namespace Yoast\WP\SEO\Tests\Unit\AI\Authentication\Application\OAuth_Auth_Strat
 use Brain\Monkey\Functions;
 use Mockery;
 use WP_User;
+use Yoast\WP\SEO\AI\Authentication\Domain\Exceptions\Auth_Strategy_Unavailable_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Internal_Server_Error_Exception;
@@ -160,7 +161,7 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	}
 
 	/**
-	 * Token issuance failure is translated into Bad_Request_Exception('OAUTH_TOKEN_UNAVAILABLE').
+	 * Token issuance failure is translated into Auth_Strategy_Unavailable_Exception('OAUTH_TOKEN_UNAVAILABLE').
 	 *
 	 * @covers ::send
 	 *
@@ -172,9 +173,9 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 
 		try {
 			$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
-			$this->fail( 'Expected Bad_Request_Exception.' );
+			$this->fail( 'Expected Auth_Strategy_Unavailable_Exception.' );
 		}
-		catch ( Bad_Request_Exception $exception ) {
+		catch ( Auth_Strategy_Unavailable_Exception $exception ) {
 			$this->assertSame( 'OAUTH_TOKEN_UNAVAILABLE', $exception->get_error_identifier() );
 		}
 	}
