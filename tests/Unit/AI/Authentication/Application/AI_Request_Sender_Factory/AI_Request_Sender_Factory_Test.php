@@ -13,6 +13,7 @@ use Yoast\WP\SEO\AI\Authentication\Application\OAuth_Auth_Strategy;
 use Yoast\WP\SEO\AI\Authentication\Application\Token_Auth_Strategy;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
+use YoastSEO_Vendor\Psr\Log\LoggerInterface;
 
 /**
  * Tests for AI_Request_Sender_Factory selection logic.
@@ -146,5 +147,24 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 
 		$this->assertSame( $this->token_strategy, $this->getPropertyValue( $sender, 'primary' ) );
 		$this->assertNull( $this->getPropertyValue( $sender, 'fallback' ) );
+	}
+
+	/**
+	 * The factory propagates its logger to the freshly-built sender, so the sender's fallback warning
+	 * isn't silently dropped (the container's Logger_Aware_Pass doesn't reach non-registered services).
+	 *
+	 * @covers ::create
+	 *
+	 * @return void
+	 */
+	public function test_create_propagates_logger_to_sender(): void {
+		// shouldIgnoreMissing(): the factory writes its own routing-decision debug logs we don't care about.
+		$logger = Mockery::mock( LoggerInterface::class )->shouldIgnoreMissing();
+		$this->instance->setLogger( $logger );
+		$this->conditional->expects( 'is_met' )->andReturn( true );
+
+		$sender = $this->instance->create( $this->user );
+
+		$this->assertSame( $logger, $this->getPropertyValue( $sender, 'logger' ) );
 	}
 }

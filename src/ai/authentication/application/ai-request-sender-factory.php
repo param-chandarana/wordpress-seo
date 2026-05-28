@@ -71,9 +71,17 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	 */
 	public function create( WP_User $user ): AI_Request_Sender {
 		if ( $this->should_use_oauth( $user ) ) {
-			return new AI_Request_Sender( $this->oauth_strategy, $this->token_strategy );
+			$sender = new AI_Request_Sender( $this->oauth_strategy, $this->token_strategy );
 		}
-		return new AI_Request_Sender( $this->token_strategy );
+		else {
+			$sender = new AI_Request_Sender( $this->token_strategy );
+		}
+
+		// Logger_Aware_Pass only auto-wires container-registered services; the sender is hand-built
+		// here so its logger must be propagated explicitly, otherwise its fallback warning is dropped.
+		$sender->setLogger( $this->logger );
+
+		return $sender;
 	}
 
 	/**
