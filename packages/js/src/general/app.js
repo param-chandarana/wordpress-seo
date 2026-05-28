@@ -135,7 +135,7 @@ const App = () => {
 									enterFrom="yst-opacity-0"
 									enterTo="yst-opacity-100"
 								>
-									{ pathname !== ROUTES.firstTimeConfiguration && <div>
+									{ pathname !== ROUTES.firstTimeConfiguration && <div className="yst-flex yst-flex-col yst-gap-3 yst-justify-between">
 										<WebinarPromoNotification store={ STORE_NAME } url={ webinarIntroSettingsUrl } image={ null } />
 										{ notices.length > 0 && <div className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-space-y-3 yoast-general-page-notices" : "yst-hidden" }> {
 											notices.map( ( notice, index ) =>
