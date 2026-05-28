@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import CheckCircleIcon from "@heroicons/react/solid/CheckCircleIcon";
 import ArrowNarrowRightIcon from "@heroicons/react/solid/ArrowNarrowRightIcon";
 import { useMemo } from "@wordpress/element";
@@ -11,6 +10,70 @@ import { ReactComponent as YoastSeoLogo } from "../../../images/yoast-premium-lo
 import { ReactComponent as WooSeoLogo } from "../../../images/woo-seo-logo-new.svg";
 // Note that the same logo in images has a width and height, which we do not want here.
 import classNames  from "classnames";
+
+/**
+ * UpsellButton component.
+ *
+ * @param {Object} props The props.
+ * @param {boolean} props.isBlackFriday Whether the Black Friday promotion is active.
+ * @param {string} props.link The link for the button.
+ * @param {Object} props.linkProps Additional props for the button link.
+ * @returns {JSX.Element} The Upsell button.
+ */
+const UpsellButton = ( { isBlackFriday, link, linkProps } ) => {
+	return <Button
+		as="a"
+		variant="upsell"
+		href={ link }
+		target="_blank"
+		rel="noopener"
+		className="yst-flex yst-justify-center yst-gap-2 yst-mt-4 focus:yst-ring-offset-primary-500"
+		{ ...linkProps }
+	>
+		<span>{ isBlackFriday ? __( "Buy now for 30% off", "wordpress-seo" ) : __( "Buy now", "wordpress-seo" ) }</span>
+		<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0 rtl:yst-rotate-180" />
+	</Button>;
+};
+
+/**
+ * The Logo component for the Premium Upsell Card.
+ *
+ * @param {*} props The props.
+ * @param {boolean} props.isWooCommerceActive Whether WooCommerce is active.
+ * @returns {JSX.Element} The Logo component.
+ */
+const UpsellTitle = ( { isWooCommerceActive } ) => <Title
+	as="h2"
+	className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold",
+		isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500" )
+	}
+>
+	{ isWooCommerceActive
+		? safeCreateInterpolateElement(
+			sprintf(
+			/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
+				__( "%1$s%2$s %3$s", "wordpress-seo" ),
+				"<nowrap>",
+				"</nowrap>",
+				"Yoast WooCommerce SEO"
+			),
+			{
+				nowrap: <span className="yst-whitespace-nowrap" />,
+			}
+		)
+		: safeCreateInterpolateElement(
+			sprintf(
+				/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
+				__( "%1$s%2$s %3$s", "wordpress-seo" ),
+				"<nowrap>",
+				"</nowrap>",
+				"Yoast SEO Premium"
+			),
+			{
+				nowrap: <span className="yst-whitespace-nowrap" />,
+			}
+		) }
+</Title>;
 
 /**
  * @param {string} link The link.
@@ -35,43 +98,15 @@ export const PremiumUpsellCard = ( { link, linkProps, isPromotionActive, isWooCo
 		}
 		return __( "Optimize your site faster, smarter, and with more confidence.", "wordpress-seo" );
 	}, [ isWooCommerceActive ] );
-	let upsellButtonText = __( "Buy now", "wordpress-seo" );
+
 	const microCopy = useMemo( () => {
 		if ( isWooCommerceActive ) {
 			return	__( "Less friction. Smarter optimization.", "wordpress-seo" );
 		}
 		return __( "Less friction. Faster publishing.", "wordpress-seo" );
 	}, [ isWooCommerceActive ] );
-	const upsellTitle = isWooCommerceActive
-		? safeCreateInterpolateElement(
-			sprintf(
-			/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
-				__( "%1$s%2$s %3$s", "wordpress-seo" ),
-				"<nowrap>",
-				"</nowrap>",
-				"Yoast WooCommerce SEO"
-			),
-			{
-				nowrap: <span className="yst-whitespace-nowrap" />,
-			}
-		)
-		: safeCreateInterpolateElement(
-			sprintf(
-				/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
-				__( "%1$s%2$s %3$s", "wordpress-seo" ),
-				"<nowrap>",
-				"</nowrap>",
-				"Yoast SEO Premium"
-			),
-			{
-				nowrap: <span className="yst-whitespace-nowrap" />,
-			}
-		);
 	const isBlackFriday = isPromotionActive( "black-friday-promotion" );
 
-	if ( isBlackFriday ) {
-		upsellButtonText = __( "Buy now for 30% off", "wordpress-seo" );
-	}
 	return (
 		<div
 			className={ classNames( "yst-p-6 yst-rounded-lg yst-text-slate-600 yst-bg-white yst-shadow yst-border",
@@ -91,14 +126,7 @@ export const PremiumUpsellCard = ( { link, linkProps, isPromotionActive, isWooCo
 					<span className="banner_text">{ __( "BLACK FRIDAY | 30% OFF", "wordpress-seo" ) }</span>
 				</div>
 			</div> }
-			<Title
-				as="h2"
-				className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold",
-					isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500" )
-				}
-			>
-				{ upsellTitle }
-			</Title>
+			<UpsellTitle isWooCommerceActive={ isWooCommerceActive } />
 			<p className="yst-mt-3 yst-font-medium yst-text-slate-800">{ infoSubHeader }</p>
 			<p className="yst-mt-1 yst-font-normal">{ info }</p>
 			<ul className="yst-list-outside yst-text-slate-600 yst-mt-4 yst-flex yst-flex-col yst-gap-2">
@@ -109,18 +137,7 @@ export const PremiumUpsellCard = ( { link, linkProps, isPromotionActive, isWooCo
 					</li>
 				) ) }
 			</ul>
-			<Button
-				as="a"
-				variant="upsell"
-				href={ link }
-				target="_blank"
-				rel="noopener"
-				className="yst-flex yst-justify-center yst-gap-2 yst-mt-4 focus:yst-ring-offset-primary-500"
-				{ ...linkProps }
-			>
-				<span>{ upsellButtonText }</span>
-				<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0 rtl:yst-rotate-180" />
-			</Button>
+			<UpsellButton link={ link } linkProps={ linkProps } isBlackFriday={ isBlackFriday } />
 			<p className="yst-text-center yst-text-xs yst-font-normal yst-leading-5 yst-text-slate-500 yst-italic yst-mt-3 yst-mb-2">
 				{ microCopy }
 			</p>
