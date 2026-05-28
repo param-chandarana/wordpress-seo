@@ -17,17 +17,11 @@ import { ReactComponent as TrolleyIcon } from "../../../images/icon-trolley.svg"
  */
 const UpsellTitle = ( { isWooCommerceActive } ) => <div className="yst-flex yst-items-center">
 	<Title as="h2" size="4" className={ `yst-text-xl yst-font-semibold ${ isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500 " }` }>
-		{ isWooCommerceActive
-			? sprintf(
-				/* translators: %s expands to "Yoast WooCommerce SEO */
-				__( "Upgrade to %s", "wordpress-seo" ),
-				"Yoast WooCommerce SEO"
-			)
-			: sprintf(
-				/* translators: %s expands to "Yoast SEO" Premium */
-				__( "Upgrade to %s", "wordpress-seo" ),
-				"Yoast SEO Premium"
-			) }
+		{ (
+			/* translators: %s expands to product name: "Yoast WooCommerce SEO" or "Yoast SEO Premium" */
+			__( "Upgrade to %s", "wordpress-seo" ),
+			isWooCommerceActive ? "Yoast WooCommerce SEO" : "Yoast SEO Premium"
+		) }
 	</Title>
 	{ isWooCommerceActive
 		? <TrolleyIcon className="yst-ms-2 yst-w-4 yst-h-3" />
@@ -46,17 +40,11 @@ const UpsellTitle = ( { isWooCommerceActive } ) => <div className="yst-flex yst-
  * @returns {JSX.Element} The Upsell button.
  */
 const UpsellButton = ( { isWooCommerceActive, premiumLink, premiumUpsellConfig = {}, isBlackFriday } ) => {
-	let upsellTitle = isWooCommerceActive
-		? sprintf(
-			/* translators: %s expands to "Yoast WooCommerce SEO" */
-			__( "Explore %s now!", "wordpress-seo" ),
-			"Yoast WooCommerce SEO"
-		)
-		: sprintf(
-			/* translators: %s expands to "Yoast SEO" Premium */
-			__( "Explore %s now!", "wordpress-seo" ),
-			"Yoast SEO Premium"
-		);
+	let upsellTitle = sprintf(
+		/* translators: %s expands to product name: "Yoast WooCommerce SEO" or "Yoast SEO Premium" */
+		__( "Explore %s now!", "wordpress-seo" ),
+		isWooCommerceActive ? "Yoast WooCommerce SEO" : "Yoast SEO Premium"
+	);
 
 	if ( isBlackFriday ) {
 		upsellTitle = __( "Get 30% off now!", "wordpress-seo" );

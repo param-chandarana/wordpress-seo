@@ -1,9 +1,8 @@
 import CheckCircleIcon from "@heroicons/react/solid/CheckCircleIcon";
 import ArrowNarrowRightIcon from "@heroicons/react/solid/ArrowNarrowRightIcon";
 import { useMemo } from "@wordpress/element";
-import { __, sprintf } from "@wordpress/i18n";
+import { __ } from "@wordpress/i18n";
 import { getPremiumBenefits, getWooSeoBenefits } from "../../helpers/get-premium-benefits";
-import { safeCreateInterpolateElement } from "../../helpers/i18n";
 import { Button, Title } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 import { ReactComponent as YoastSeoLogo } from "../../../images/yoast-premium-logo-new.svg";
@@ -44,35 +43,11 @@ const UpsellButton = ( { isBlackFriday, link, linkProps } ) => {
  */
 const UpsellTitle = ( { isWooCommerceActive } ) => <Title
 	as="h2"
-	className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold",
+	className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold yst-whitespace-nowrap",
 		isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500" )
 	}
 >
-	{ isWooCommerceActive
-		? safeCreateInterpolateElement(
-			sprintf(
-			/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
-				__( "%1$s%2$s %3$s", "wordpress-seo" ),
-				"<nowrap>",
-				"</nowrap>",
-				"Yoast WooCommerce SEO"
-			),
-			{
-				nowrap: <span className="yst-whitespace-nowrap" />,
-			}
-		)
-		: safeCreateInterpolateElement(
-			sprintf(
-				/* translators: %1$s and %2$s expand to a span wrap to avoid linebreaks. %3$s expands to "Yoast SEO Premium". */
-				__( "%1$s%2$s %3$s", "wordpress-seo" ),
-				"<nowrap>",
-				"</nowrap>",
-				"Yoast SEO Premium"
-			),
-			{
-				nowrap: <span className="yst-whitespace-nowrap" />,
-			}
-		) }
+	{ isWooCommerceActive ? "Yoast WooCommerce SEO" : "Yoast SEO Premium" }
 </Title>;
 
 /**
@@ -154,4 +129,5 @@ PremiumUpsellCard.propTypes = {
 	link: PropTypes.string.isRequired,
 	linkProps: PropTypes.object.isRequired,
 	isPromotionActive: PropTypes.func.isRequired,
+	isWooCommerceActive: PropTypes.bool.isRequired,
 };
