@@ -2,7 +2,7 @@
 
 // phpcs:disable Yoast.NamingConventions.NamespaceName.TooLong -- Needed in the folder structure.
 // phpcs:disable Yoast.NamingConventions.NamespaceName.MaxExceeded
-namespace Yoast\WP\SEO\Tests\Unit\AI\Content_Planner\User_Interface\Get_Outline_Route;
+namespace Yoast\WP\SEO\Tests\Unit\AI\Content_Planner\User_Interface\Get_Suggestions_Route;
 
 use Brain\Monkey\Functions;
 use Mockery;
@@ -11,15 +11,15 @@ use WP_REST_Request;
 use WP_User;
 
 /**
- * Tests the Get_Outline_Route check_permissions method.
+ * Tests the Get_Suggestions_Route check_permissions method.
  *
  * @group ai-content-planner
  *
- * @covers \Yoast\WP\SEO\AI\Content_Planner\User_Interface\Get_Outline_Route::check_permissions
+ * @covers \Yoast\WP\SEO\AI\Content_Planner\User_Interface\Get_Suggestions_Route::check_permissions
  *
  * @phpcs:disable Yoast.NamingConventions.ObjectNameDepth.MaxExceeded
  */
-final class Check_Permissions_Test extends Abstract_Get_Outline_Route_Test {
+final class Check_Permissions_Test extends Abstract_Get_Suggestions_Route_Test {
 
 	/**
 	 * Builds a request whose `post_type` parameter returns the given value.
