@@ -9,7 +9,7 @@ import { ReactComponent as CrownIcon } from "../../../images/icon-crown.svg";
 import { ReactComponent as TrolleyIcon } from "../../../images/icon-trolley.svg";
 
 /**
- * The title of the premium upsell card.
+ * The title of the premium upsell list.
  *
  * @param {*} props The props.
  * @param {boolean} props.isWooCommerceActive Whether WooCommerce is active.
