@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import CheckCircleIcon from "@heroicons/react/solid/CheckCircleIcon";
 import ArrowNarrowRightIcon from "@heroicons/react/solid/ArrowNarrowRightIcon";
 import { useMemo } from "@wordpress/element";
@@ -103,7 +104,7 @@ export const PremiumUpsellCard = ( { link, linkProps, isPromotionActive, isWooCo
 			<ul className="yst-list-outside yst-text-slate-600 yst-mt-4 yst-flex yst-flex-col yst-gap-2">
 				{ getBenefits( true ).map( ( benefit, index ) => (
 					<li key={ `upsell-benefit-${ index }` } className="yst-flex yst-items-start">
-						<CheckCircleIcon className="yst-mr-2 yst-text-green-500 yst-w-[19.5px] yst-h-[19.5px] yst-flex-shrink-0" />
+						<CheckCircleIcon className="yst-me-2 yst-text-green-500 yst-w-[19.5px] yst-h-[19.5px] yst-flex-shrink-0" />
 						{ benefit }
 					</li>
 				) ) }
@@ -118,7 +119,7 @@ export const PremiumUpsellCard = ( { link, linkProps, isPromotionActive, isWooCo
 				{ ...linkProps }
 			>
 				<span>{ upsellButtonText }</span>
-				<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0" />
+				<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0 rtl:yst-rotate-180" />
 			</Button>
 			<p className="yst-text-center yst-text-xs yst-font-normal yst-leading-5 yst-text-slate-500 yst-italic yst-mt-3 yst-mb-2">
 				{ microCopy }
