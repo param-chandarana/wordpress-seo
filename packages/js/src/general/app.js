@@ -135,16 +135,21 @@ const App = () => {
 									enterFrom="yst-opacity-0"
 									enterTo="yst-opacity-100"
 								>
-									{ pathname !== ROUTES.firstTimeConfiguration && <div className="yst-flex yst-flex-col yst-gap-3 yst-justify-between">
-										<WebinarPromoNotification store={ STORE_NAME } url={ webinarIntroSettingsUrl } image={ null } />
-										{ notices.length > 0 && <div className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-space-y-3 yoast-general-page-notices" : "yst-hidden" }> {
+									{ pathname !== ROUTES.firstTimeConfiguration && <div>
+										<WebinarPromoNotification
+											store={ STORE_NAME }
+											url={ webinarIntroSettingsUrl }
+											image={ null }
+											className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-3" : "yst-mb-8" }
+										/>
+										{ notices.length > 0 && <div> {
 											notices.map( ( notice, index ) =>
 												<Notice
 													key={ index }
 													id={ notice.id || "yoast-general-page-notice-" + index }
 													title={ notice.header }
 													isDismissable={ notice.isDismissable }
-													className={ notice.isDismissed ? "yst-hidden" : "" }
+													className={ notice.isDismissed ? "yst-hidden" : "yst-mb-3 last:yst-mb-8" }
 												>
 													{ notice.content }
 												</Notice>
