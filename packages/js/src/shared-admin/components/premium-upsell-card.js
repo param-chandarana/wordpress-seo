@@ -35,11 +35,11 @@ const UpsellButton = ( { isBlackFriday, link, linkProps } ) => {
 };
 
 /**
- * The Logo component for the Premium Upsell Card.
+ * The title component for the Premium Upsell Card.
  *
  * @param {*} props The props.
  * @param {boolean} props.isWooCommerceActive Whether WooCommerce is active.
- * @returns {JSX.Element} The Logo component.
+ * @returns {JSX.Element} The upsell title component.
  */
 const UpsellTitle = ( { isWooCommerceActive } ) => <Title
 	as="h2"
