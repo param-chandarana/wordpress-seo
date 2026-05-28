@@ -104,20 +104,4 @@ class Request {
 			$this->is_post,
 		);
 	}
-
-	/**
-	 * Returns a copy of the request with the given body fields merged in.
-	 *
-	 * @param array<string> $body The body fields to add.
-	 *
-	 * @return self The new request.
-	 */
-	public function with_added_body( array $body ): self {
-		return new self(
-			$this->action_path,
-			\array_merge( $this->body, $body ),
-			$this->headers,
-			$this->is_post,
-		);
-	}
 }
