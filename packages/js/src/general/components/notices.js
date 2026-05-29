@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import classNames from "classnames";
 import { STORE_NAME } from "../constants";
 import WebinarPromoNotification from "../../components/WebinarPromoNotification";
@@ -36,3 +37,14 @@ export const Notices = ( { notices, webinarIntroSettingsUrl } ) => ( <div>
 	}
 	</div> }
 </div> );
+
+Notices.propTypes = {
+	notices: PropTypes.arrayOf( PropTypes.shape( {
+		id: PropTypes.string,
+		header: PropTypes.string.isRequired,
+		content: PropTypes.string.isRequired,
+		isDismissable: PropTypes.bool.isRequired,
+		isDismissed: PropTypes.bool.isRequired,
+	} ) ).isRequired,
+	webinarIntroSettingsUrl: PropTypes.string.isRequired,
+};
