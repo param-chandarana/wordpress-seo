@@ -219,9 +219,6 @@ final class Handle_Test extends Abstract_Content_Outline_Command_Handler_Test {
 	public function test_handle_revokes_consent_on_forbidden_during_token_fetch() {
 		$command = $this->build_command();
 
-		$post_list = Mockery::mock( Post_List::class );
-
-		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
 		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
 		$this->token_manager
 			->expects( 'get_or_request_access_token' )

@@ -82,7 +82,7 @@ class Content_Outline_Command_Handler {
 		Content_Outline_Command $command,
 		bool $retry_on_unauthorized = true
 	): Section_List {
-		$recent_content = $this->recent_content_collector->collect( $command->get_post_type() );
+		$recent_content = $command->get_recent_content();
 		$about_page     = $this->recent_content_collector->collect_about_page( $command->get_post_type() );
 		try {
 			$token = $this->token_manager->get_or_request_access_token( $command->get_user() );
@@ -93,7 +93,6 @@ class Content_Outline_Command_Handler {
 			throw new Forbidden_Exception( 'CONSENT_REVOKED', $exception->getCode() );
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
-		$recent_content = $recent_content->to_array();
 
 		$existing_posts = \array_map(
 			static function ( $post ) {
