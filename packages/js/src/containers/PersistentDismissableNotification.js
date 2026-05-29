@@ -14,7 +14,6 @@ import classNames from "classnames";
  *
  * @returns {Component} The composed Notification component.
  */
-
 export const PersistentDismissableNotification = ( {
 	children,
 	id,
@@ -59,6 +58,7 @@ PersistentDismissableNotification.propTypes = {
 	image: PropTypes.elementType,
 	isAlertDismissed: PropTypes.bool.isRequired,
 	onDismissed: PropTypes.func.isRequired,
+	className: PropTypes.string,
 };
 
 export default withPersistentDismiss( PersistentDismissableNotification );
