@@ -1,5 +1,6 @@
 import { Listbox, Transition } from "@headlessui/react";
-import { CheckIcon, SelectorIcon } from "@heroicons/react/solid";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import SelectorIcon from "@heroicons/react/solid/SelectorIcon";
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef, Fragment, useCallback, useMemo } from "react";

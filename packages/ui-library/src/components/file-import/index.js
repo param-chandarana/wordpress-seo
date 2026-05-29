@@ -1,5 +1,6 @@
 import { Transition } from "@headlessui/react";
-import { DocumentTextIcon, XIcon } from "@heroicons/react/outline";
+import DocumentTextIcon from "@heroicons/react/outline/DocumentTextIcon";
+import XIcon from "@heroicons/react/outline/XIcon";
 import { capitalize, includes, isEmpty, isNull, values } from "lodash";
 import PropTypes from "prop-types";
 import React, { createContext, forwardRef, useCallback, useContext, useMemo } from "react";

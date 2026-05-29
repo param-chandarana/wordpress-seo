@@ -11472,19 +11472,19 @@
     js-yaml "^3.10.0"
     tslib "^2.4.0"
 
-"@yoast/ai-frontend@^0.24.0":
-  version "0.24.0"
-  resolved "https://registry.yarnpkg.com/@yoast/ai-frontend/-/ai-frontend-0.24.0.tgz#7c9c185f0c34513e64dfd27f27c8647f1efceeea"
-  integrity sha512-NdtjfFSTEVSYTnH9kSdj4Dv+VJumEUZpU5lQBE21hvisHntKi2n5jkQyc19KlL0WxeVI7oRAsYsENvqQNlAimQ==
+"@yoast/ai-frontend@^0.25.0":
+  version "0.25.0"
+  resolved "https://registry.yarnpkg.com/@yoast/ai-frontend/-/ai-frontend-0.25.0.tgz#974b410edf85cf7b349a94bed4300d33a5c66633"
+  integrity sha512-KFPBkQxJhprVipa18A5GfFSEtJpwAwIXub3yJKhlEeEuUadx5gVa5VYkLwA1c1zZBxHLKoWebwtgIam6pjK5ig==
   dependencies:
     "@draft-js-plugins/mention" "^5.3.0"
     "@heroicons/react" "^2.1.5"
     "@wordpress/compose" "^7.7.0"
     "@wordpress/element" "^6.1.0"
     "@wordpress/i18n" "^5.1.0"
-    "@yoast/search-metadata-previews" "^3.0.0-alpha.2"
-    "@yoast/social-metadata-previews" "^3.0.0-alpha.2"
-    "@yoast/ui-library" "^4.4.0"
+    "@yoast/search-metadata-previews" "^3.0.0"
+    "@yoast/social-metadata-previews" "^2.0.0"
+    "@yoast/ui-library" "^4.5.0"
     draft-js "^0.11.7"
     jose "^5.3.0"
     lodash "^4.17.21"
@@ -11540,23 +11540,6 @@
     grunt-wp-i18n "^1.0.3"
     load-grunt-config "^1.0.1"
     time-grunt "^1.0.0"
-
-"@yoast/social-metadata-previews@^3.0.0-alpha.2":
-  version "3.0.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/@yoast/social-metadata-previews/-/social-metadata-previews-3.0.0-alpha.2.tgz#f3a61bfc08c66936066733f89eb6c417859a819a"
-  integrity sha512-QGh38nvT+SvfNLvVAUHS4mXR9IrascqnpiAkLWJqET1tiobYQuUxU1Iv5HK4WSo6nQ9dJ8qJ0Dqh3hBr9p3kfg==
-  dependencies:
-    "@wordpress/i18n" "^5.8.2"
-    "@yoast/components" "^3.0.0-alpha.3"
-    "@yoast/replacement-variable-editor" "^2.0.0-alpha.3"
-    "@yoast/social-metadata-forms" "^2.0.0-alpha.3"
-    "@yoast/style-guide" "^0.14.0-alpha.1"
-    lodash "^4.17.21"
-    prop-types "^15.6.0"
-    react "^18.3.1"
-    react-dom "^18.3.1"
-    redux "^3.7.2"
-    styled-components "^5.3.6"
 
 "@zip.js/zip.js@2.7.57":
   version "2.7.57"
@@ -24227,7 +24210,7 @@ locate-path@^7.1.0:
   dependencies:
     p-locate "^6.0.0"
 
-lodash-es@^4.17.21, lodash-es@^4.2.1:
+lodash-es@^4.17.21:
   version "4.18.1"
   resolved "https://registry.yarnpkg.com/lodash-es/-/lodash-es-4.18.1.tgz#b962eeb80d9d983a900bf342961fb7418ca10b1d"
   integrity sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==
@@ -24357,7 +24340,7 @@ lodash@^3.10.0, lodash@^3.10.1, lodash@^3.3.1:
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-3.10.1.tgz#5bf45e8e49ba4189e17d482789dfd15bd140b7b6"
   integrity sha1-W/Rejkm6QYnhfUgnid/RW9FAt7Y=
 
-lodash@^4.11.0, lodash@^4.14.2, lodash@^4.17.10, lodash@^4.17.11, lodash@^4.17.12, lodash@^4.17.14, lodash@^4.17.15, lodash@^4.17.19, lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.4, lodash@^4.2.1, lodash@^4.7.0:
+lodash@^4.11.0, lodash@^4.14.2, lodash@^4.17.10, lodash@^4.17.11, lodash@^4.17.12, lodash@^4.17.14, lodash@^4.17.15, lodash@^4.17.19, lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.4, lodash@^4.7.0:
   version "4.18.1"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.18.1.tgz#ff2b66c1f6326d59513de2407bf881439812771c"
   integrity sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==
@@ -29314,20 +29297,17 @@ redux-thunk@^2.4.1:
   resolved "https://registry.yarnpkg.com/redux-thunk/-/redux-thunk-2.4.1.tgz#0dd8042cf47868f4b29699941de03c9301a75714"
   integrity sha512-OOYGNY5Jy2TWvTL1KgAlVy6dcx3siPJ1wTq741EPyUKfn6W6nChdICjZwCd0p8AZBs5kWpZlbkXW2nE/zjUa+Q==
 
-redux@^3.7.2:
-  version "3.7.2"
-  resolved "https://registry.yarnpkg.com/redux/-/redux-3.7.2.tgz#06b73123215901d25d065be342eb026bc1c8537b"
-  integrity sha512-pNqnf9q1hI5HHZRBkj3bAngGZW/JMCmexDlOxw4XagXY2o1327nHH54LoTjiPJ0gizoqPDRqWyX/00g0hD6w+A==
-  dependencies:
-    lodash "^4.2.1"
-    lodash-es "^4.2.1"
-    loose-envify "^1.1.0"
-    symbol-observable "^1.0.3"
-
 redux@^4.1.2:
   version "4.1.2"
   resolved "https://registry.yarnpkg.com/redux/-/redux-4.1.2.tgz#140f35426d99bb4729af760afcf79eaaac407104"
   integrity sha512-SH8PglcebESbd/shgf6mii6EIoRM0zrQyjcuQ+ojmfxjTtE0z9Y8pa62iA/OJ58qjP6j27uyW4kUF4jl/jd6sw==
+  dependencies:
+    "@babel/runtime" "^7.9.2"
+
+redux@^4.2.1:
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/redux/-/redux-4.2.1.tgz#c08f4306826c49b5e9dc901dee0452ea8fce6197"
+  integrity sha512-LAUYz4lc+Do8/g7aeRa8JkyDErK6ekstQaqWQrNRW//MY1TvCEpMtpTWvlQ+FPbWCx+Xixu/6SHt5N0HR+SB4w==
   dependencies:
     "@babel/runtime" "^7.9.2"
 
@@ -31913,11 +31893,6 @@ swc-loader@^0.2.3, swc-loader@^0.2.6:
   integrity sha512-9Zi9UP2YmDpgmQVbyOPJClY0dwf58JDyDMQ7uRc4krmc72twNI2fvlBWHLqVekBpPc7h5NJkGVT1zNDxFrqhvg==
   dependencies:
     "@swc/counter" "^0.1.3"
-
-symbol-observable@^1.0.3:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-1.2.0.tgz#c22688aed4eab3cdc2dfeacbb561660560a00804"
-  integrity sha512-e900nM8RRtGhlV36KGEU9k65K3mPb1WV70OdjfxlG2EAuM1noi/E/BaW/uMhL7bPEssK8QV57vN3esixjUvcXQ==
 
 symbol-tree@^3.2.4:
   version "3.2.4"

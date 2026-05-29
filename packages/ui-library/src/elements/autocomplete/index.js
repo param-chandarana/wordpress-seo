@@ -1,6 +1,7 @@
 import { Combobox, Transition } from "@headlessui/react";
-import { XIcon } from "@heroicons/react/outline";
-import { CheckIcon, SelectorIcon } from "@heroicons/react/solid";
+import XIcon from "@heroicons/react/outline/XIcon";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import SelectorIcon from "@heroicons/react/solid/SelectorIcon";
 import classNames from "classnames";
 import { constant } from "lodash";
 import PropTypes from "prop-types";
