@@ -7,6 +7,9 @@ import TextInput from "../../elements/text-input";
 import { ValidationInput, ValidationMessage } from "../../elements/validation";
 import { useDescribedBy } from "../../hooks";
 
+// Stable reference matching the old defaultProps single instance, so it keeps a constant identity across renders.
+const DEFAULT_VALIDATION = {};
+
 /**
  * @param {string} id The ID of the input.
  * @param {function} onChange The input change handler.
@@ -29,7 +32,7 @@ const TextField = forwardRef( ( {
 	readOnly = false,
 	className = "",
 	description = null,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );

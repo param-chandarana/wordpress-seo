@@ -7,6 +7,9 @@ import Textarea from "../../elements/textarea";
 import { ValidationInput, ValidationMessage } from "../../elements/validation";
 import { useDescribedBy } from "../../hooks";
 
+// Stable reference matching the old defaultProps single instance, so it keeps a constant identity across renders.
+const DEFAULT_VALIDATION = {};
+
 /**
  * @param {string} id The ID of the input.
  * @param {string} label The label.
@@ -23,7 +26,7 @@ const TextareaField = forwardRef( ( {
 	label,
 	className = "",
 	description = null,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	disabled = false,
 	readOnly = false,
 	...props

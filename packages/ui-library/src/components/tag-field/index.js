@@ -7,6 +7,9 @@ import TagInput from "../../elements/tag-input";
 import { ValidationInput, ValidationMessage } from "../../elements/validation";
 import { useDescribedBy } from "../../hooks";
 
+// Stable reference matching the old defaultProps single instance, so it keeps a constant identity across renders.
+const DEFAULT_VALIDATION = {};
+
 /**
  * @param {string} id The ID of the input.
  * @param {string} label The label.
@@ -25,7 +28,7 @@ const TagField = forwardRef( ( {
 	disabled = false,
 	className = "",
 	description = null,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );

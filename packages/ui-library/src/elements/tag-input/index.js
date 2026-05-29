@@ -6,6 +6,9 @@ import PropTypes from "prop-types";
 import React, { forwardRef, useCallback, useState } from "react";
 import { Badge } from "../../index";
 
+// Stable reference matching the old defaultProps single instance, so it keeps a constant identity across renders.
+const DEFAULT_TAGS = [];
+
 /**
  * @param {string} tag The tag / label.
  * @param {number} index The tag index.
@@ -72,7 +75,7 @@ Tag.propTypes = {
  * @returns {JSX.Element} The element.
  */
 const TagInput = forwardRef( ( {
-	tags = [],
+	tags = DEFAULT_TAGS,
 	children = null,
 	className = "",
 	disabled = false,

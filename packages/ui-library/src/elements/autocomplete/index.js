@@ -15,6 +15,11 @@ import { ValidationInput } from "../validation";
 const AutocompleteButton = forwardRef( ( props, ref ) => <Combobox.Button as="div" ref={ ref } { ...props } /> );
 AutocompleteButton.displayName = "AutocompleteButton";
 
+// Stable references matching the old defaultProps single instance, so they keep a constant identity across renders.
+const DEFAULT_LABEL_PROPS = {};
+const DEFAULT_VALIDATION = {};
+const DEFAULT_BUTTON_PROPS = {};
+
 /**
  * @param {React.ReactNode} [children=null] The children.
  * @param {string} value The value.
@@ -107,15 +112,15 @@ const Autocomplete = forwardRef( ( {
 	children = null,
 	selectedLabel = "",
 	label = "",
-	labelProps = {},
+	labelProps = DEFAULT_LABEL_PROPS,
 	labelSuffix = null,
 	onChange,
 	onQueryChange,
 	onClear = null,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	placeholder = "",
 	className = "",
-	buttonProps = {},
+	buttonProps = DEFAULT_BUTTON_PROPS,
 	clearButtonScreenReaderText = "Clear",
 	nullable = false,
 	disabled = false,

@@ -6,6 +6,9 @@ import Autocomplete from "../../elements/autocomplete";
 import { ValidationMessage } from "../../elements/validation";
 import { useDescribedBy } from "../../hooks";
 
+// Stable reference matching the old defaultProps single instance, so it keeps a constant identity across renders.
+const DEFAULT_VALIDATION = {};
+
 /**
  * @param {string} id Identifier.
  * @param {Object} validation The validation state.
@@ -21,7 +24,7 @@ const AutocompleteField = forwardRef( ( {
 	label,
 	disabled = false,
 	description = null,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	className = "",
 	...props
 }, ref ) => {

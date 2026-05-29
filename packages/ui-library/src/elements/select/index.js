@@ -43,6 +43,12 @@ const Option = ( { value, label } ) => {
 
 Option.propTypes = optionPropType;
 
+// Stable references matching the old defaultProps single instance, so they keep a constant identity across renders.
+const DEFAULT_OPTIONS = [];
+const DEFAULT_LABEL_PROPS = {};
+const DEFAULT_VALIDATION = {};
+const DEFAULT_BUTTON_PROPS = {};
+
 /**
  * @param {string} id Identifier.
  * @param {string} value Selected value.
@@ -63,17 +69,17 @@ Option.propTypes = optionPropType;
 const Select = forwardRef( ( {
 	id,
 	value,
-	options = [],
+	options = DEFAULT_OPTIONS,
 	children = null,
 	selectedLabel = "",
 	label = "",
-	labelProps = {},
+	labelProps = DEFAULT_LABEL_PROPS,
 	labelSuffix = null,
 	onChange,
 	disabled = false,
-	validation = {},
+	validation = DEFAULT_VALIDATION,
 	className = "",
-	buttonProps = {},
+	buttonProps = DEFAULT_BUTTON_PROPS,
 	...props
 }, ref ) => {
 	const selectedOption = useMemo( () => (
