@@ -17,6 +17,7 @@ import { deleteMigratingNotices } from "../helpers/migrateNotices";
 import { useNotificationCountSync, useSelectGeneralPage } from "./hooks";
 import { MenuItemLink, YoastLogo } from "../shared-admin/components";
 import { ROUTES } from "./routes";
+import classNames from "classnames";
 
 /**
  * @param {string} [idSuffix] Extra id suffix. Can prevent double IDs on the page.
@@ -140,7 +141,11 @@ const App = () => {
 											store={ STORE_NAME }
 											url={ webinarIntroSettingsUrl }
 											image={ null }
-											className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-3" : "yst-mb-8" }
+											className={
+												classNames(
+													notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-3" : "yst-mb-8",
+													"yoast-webinar-dashboard"
+												) }
 										/>
 										{ notices.length > 0 && <div> {
 											notices.map( ( notice, index ) =>
