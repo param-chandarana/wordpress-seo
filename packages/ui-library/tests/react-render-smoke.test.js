@@ -4,9 +4,24 @@
  * Each component is rendered with ONLY its required props (children plus any
  * prop-types `isRequired` prop) inside `<Root>`, and we assert it mounts
  * without throwing. Optional / previously-defaulted props are deliberately
- * omitted: omitting them is exactly what surfaces the React-19 class of bug
- * where a missing `defaultProps` default becomes `undefined` and is then
- * dereferenced (e.g. Title's `as`, Button's `variant`).
+ * omitted: omitting them is exactly what surfaces the class of bug where a
+ * missing `defaultProps` default becomes `undefined` and is then dereferenced
+ * (e.g. Title's `as`, Button's `variant`).
+ *
+ * On top of the per-component required-props cases, the list carries two extra
+ * kinds of case that exercise DEFAULT states the curated props would otherwise
+ * mask:
+ *
+ * 1. Children-path variants. Several components branch between a data prop
+ *    (`steps` / `options`) and a `children` prop. The data-prop default (an
+ *    empty array) is the risky path: when that default lacks a stable identity
+ *    it can drive an effect into an infinite render loop. These variants render
+ *    the component through `children` with the data prop OMITTED so the default
+ *    array is what backs the render. `.not.toThrow()` catches both crashes and
+ *    React's "Maximum update depth exceeded" loop error, so the Stepper variant
+ *    below is a regression guard for the `DEFAULT_STEPS` stable-identity fix.
+ * 2. Required-props-only variants for components whose curated case above passes
+ *    optional scaffolding props, so their omitted defaults are exercised too.
  *
  * The list is data-driven so it is trivial to extend: add a
  * `{ name, Component, props }` entry to `cases`.
@@ -332,6 +347,51 @@ const cases = [
 					<DropdownMenu.ButtonItem>Item</DropdownMenu.ButtonItem>
 				</DropdownMenu.List>
 			</>,
+		},
+	},
+
+	// Children-path variants: render the data-prop components through `children` with the
+	// data prop (`steps` / `options`) OMITTED, so the empty-array default backs the render.
+
+	// Must-have regression guard: with `children` and the default (empty) `steps`, an
+	// unstable default array re-fired the layout effect every render, looping forever
+	// ("Maximum update depth exceeded"). The stable `DEFAULT_STEPS` fix is what this catches.
+	{
+		name: "Stepper (children, default steps)",
+		Component: Stepper,
+		props: { children: <Stepper.Step id="s1" index={ 0 }>Step</Stepper.Step> },
+	},
+	{
+		name: "CheckboxGroup (children, default options)",
+		Component: CheckboxGroup,
+		props: { children: <CheckboxGroup.Checkbox id="cgc" name="cgc" value="a" label="A" /> },
+	},
+	{
+		name: "RadioGroup (children, default options)",
+		Component: RadioGroup,
+		props: { children: <RadioGroup.Radio id="rgr" name="rgr" value="a" label="A" /> },
+	},
+	{
+		// Select is the parent Listbox, so its Option children render fine here (unlike a
+		// standalone Option). This drives the `children || options.map(...)` branch with the
+		// default (empty) options array.
+		name: "Select (children, default options)",
+		Component: Select,
+		props: { id: "selc", value: "a", onChange: noop, children: <Select.Option value="a" label="A" /> },
+	},
+
+	// Required-props-only variant: the ImageSelect case above passes optional `isDisabled`
+	// and `children`; render with only the props it actually needs so those defaults apply.
+	{
+		name: "ImageSelect (required only)",
+		Component: ImageSelect,
+		props: {
+			id: "img2",
+			label: "Label",
+			imageUrl: "",
+			selectButtonLabel: "Select",
+			replaceButtonLabel: "Replace",
+			onSelectImage: noop,
 		},
 	},
 ];
