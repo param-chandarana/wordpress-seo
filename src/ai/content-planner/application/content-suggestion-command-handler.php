@@ -94,8 +94,8 @@ class Content_Suggestion_Command_Handler {
 		Content_Suggestion_Command $command,
 		bool $retry_on_unauthorized = true
 	): Content_Suggestion_Response {
-		$post_list      = $this->recent_content_collector->collect( $command->get_post_type() );
-		$about_page     = $this->recent_content_collector->collect_about_page( $command->get_post_type() );
+		$post_list  = $this->recent_content_collector->collect( $command->get_post_type() );
+		$about_page = $this->recent_content_collector->collect_about_page( $command->get_post_type() );
 		try {
 			$token = $this->token_manager->get_or_request_access_token( $command->get_user() );
 		} catch ( Forbidden_Exception $exception ) {
