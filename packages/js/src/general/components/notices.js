@@ -1,7 +1,7 @@
-import WebinarPromoNotification from "../../components/WebinarPromoNotification";
-import { Notice } from ".";
 import classNames from "classnames";
 import { STORE_NAME } from "../constants";
+import WebinarPromoNotification from "../../components/WebinarPromoNotification";
+import { Notice } from ".";
 
 /**
  * The notices component that renders the notices on the general page.
