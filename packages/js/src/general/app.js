@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import { Transition } from "@headlessui/react";
 import AdjustmentsIcon from "@heroicons/react/outline/AdjustmentsIcon";
 import BellIcon from "@heroicons/react/outline/BellIcon";
@@ -11,14 +10,12 @@ import { addQueryArgs } from "@wordpress/url";
 import { Notifications, SidebarNavigation, useSvgAria } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Notice, OptInContainer } from "./components";
+import { Notices, OptInContainer } from "./components";
 import { STORE_NAME } from "./constants";
-import WebinarPromoNotification from "../components/WebinarPromoNotification";
 import { deleteMigratingNotices } from "../helpers/migrateNotices";
 import { useNotificationCountSync, useSelectGeneralPage } from "./hooks";
 import { MenuItemLink, YoastLogo } from "../shared-admin/components";
 import { ROUTES } from "./routes";
-import classNames from "classnames";
 
 /**
  * @param {string} [idSuffix] Extra id suffix. Can prevent double IDs on the page.
@@ -137,32 +134,10 @@ const App = () => {
 									enterFrom="yst-opacity-0"
 									enterTo="yst-opacity-100"
 								>
-									{ pathname !== ROUTES.firstTimeConfiguration && <div>
-										<WebinarPromoNotification
-											store={ STORE_NAME }
-											url={ webinarIntroSettingsUrl }
-											image={ null }
-											className={
-												classNames(
-													notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-3" : "yst-mb-8",
-													"yoast-webinar-dashboard"
-												) }
-										/>
-										{ notices.length > 0 && <div className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-8" : "" }> {
-											notices.map( ( notice, index ) =>
-												<Notice
-													key={ index }
-													id={ notice.id || "yoast-general-page-notice-" + index }
-													title={ notice.header }
-													isDismissable={ notice.isDismissable }
-													className={ notice.isDismissed ? "yst-hidden" : "yst-mb-3" }
-												>
-													{ notice.content }
-												</Notice>
-											)
-										}
-										</div> }
-									</div> }
+									{ pathname !== ROUTES.firstTimeConfiguration && <Notices
+										notices={ notices }
+										webinarIntroSettingsUrl={ webinarIntroSettingsUrl }
+									/> }
 									<Outlet />
 								</Transition>
 							</main>
