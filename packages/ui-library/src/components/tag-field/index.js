@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef } from "react";
@@ -20,11 +21,11 @@ import { useDescribedBy } from "../../hooks";
 const TagField = forwardRef( ( {
 	id,
 	label,
-	labelSuffix,
-	disabled,
-	className,
-	description,
-	validation,
+	labelSuffix = null,
+	disabled = false,
+	className = "",
+	description = null,
+	validation = {},
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );
@@ -67,13 +68,6 @@ TagField.propTypes = {
 		variant: PropTypes.string,
 		message: PropTypes.node,
 	} ),
-};
-TagField.defaultProps = {
-	labelSuffix: null,
-	disabled: false,
-	className: "",
-	description: null,
-	validation: {},
 };
 
 export default TagField;

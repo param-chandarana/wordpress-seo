@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef } from "react";
@@ -18,10 +19,10 @@ import { useDescribedBy } from "../../hooks";
 const SelectField = forwardRef( ( {
 	id,
 	label,
-	description,
-	disabled,
-	validation,
-	className,
+	description = null,
+	disabled = false,
+	validation = {},
+	className = "",
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );
@@ -63,12 +64,6 @@ SelectField.propTypes = {
 		message: PropTypes.node,
 	} ),
 	className: PropTypes.string,
-};
-SelectField.defaultProps = {
-	description: null,
-	disabled: false,
-	validation: {},
-	className: "",
 };
 
 SelectField.Option = Select.Option;

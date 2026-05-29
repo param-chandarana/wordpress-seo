@@ -47,9 +47,5 @@ ValidationInput.propTypes = {
 	} ),
 	className: PropTypes.string,
 };
-ValidationInput.defaultProps = {
-	validation: {},
-	className: "",
-};
 
 export default ValidationInput;

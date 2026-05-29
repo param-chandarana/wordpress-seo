@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef } from "react";
@@ -23,12 +24,12 @@ const TextField = forwardRef( ( {
 	id,
 	onChange,
 	label,
-	labelSuffix,
-	disabled,
-	readOnly,
-	className,
-	description,
-	validation,
+	labelSuffix = null,
+	disabled = false,
+	readOnly = false,
+	className = "",
+	description = null,
+	validation = {},
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );
@@ -84,14 +85,6 @@ TextField.propTypes = {
 		variant: PropTypes.string,
 		message: PropTypes.node,
 	} ),
-};
-TextField.defaultProps = {
-	labelSuffix: null,
-	disabled: false,
-	readOnly: false,
-	className: "",
-	description: null,
-	validation: {},
 };
 
 export default TextField;

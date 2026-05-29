@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import XIcon from "@heroicons/react/solid/XIcon";
 import classNames from "classnames";
 import { isString, map, noop } from "lodash";
@@ -72,14 +73,14 @@ Tag.propTypes = {
  */
 const TagInput = forwardRef( ( {
 	tags = [],
-	children,
-	className,
-	disabled,
-	onAddTag,
-	onRemoveTag,
-	onSetTags,
-	onBlur,
-	screenReaderRemoveTag,
+	children = null,
+	className = "",
+	disabled = false,
+	onAddTag = noop,
+	onRemoveTag = noop,
+	onSetTags = noop,
+	onBlur = noop,
+	screenReaderRemoveTag = "Remove tag",
 	...props
 }, ref ) => {
 	const [ text, setText ] = useState( "" );
@@ -157,17 +158,6 @@ TagInput.propTypes = {
 	onSetTags: PropTypes.func,
 	onBlur: PropTypes.func,
 	screenReaderRemoveTag: PropTypes.string,
-};
-TagInput.defaultProps = {
-	tags: [],
-	children: null,
-	className: "",
-	disabled: false,
-	onAddTag: noop,
-	onRemoveTag: noop,
-	onSetTags: noop,
-	onBlur: noop,
-	screenReaderRemoveTag: "Remove tag",
 };
 
 TagInput.Tag = Tag;

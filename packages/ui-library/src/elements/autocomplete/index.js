@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Combobox, Transition } from "@headlessui/react";
 import XIcon from "@heroicons/react/outline/XIcon";
 import CheckIcon from "@heroicons/react/solid/CheckIcon";
@@ -102,22 +103,22 @@ ClearSelection.propTypes = {
  */
 const Autocomplete = forwardRef( ( {
 	id,
-	value,
-	children,
-	selectedLabel,
-	label,
-	labelProps,
-	labelSuffix,
+	value = null,
+	children = null,
+	selectedLabel = "",
+	label = "",
+	labelProps = {},
+	labelSuffix = null,
 	onChange,
 	onQueryChange,
-	onClear,
-	validation,
-	placeholder,
-	className,
-	buttonProps,
-	clearButtonScreenReaderText,
-	nullable,
-	disabled,
+	onClear = null,
+	validation = {},
+	placeholder = "",
+	className = "",
+	buttonProps = {},
+	clearButtonScreenReaderText = "Clear",
+	nullable = false,
+	disabled = false,
 	...props
 }, ref ) => {
 	const getDisplayValue = useCallback( constant( selectedLabel ), [ selectedLabel ] );
@@ -220,22 +221,6 @@ const propTypes = {
 
 Autocomplete.displayName = "Autocomplete";
 Autocomplete.propTypes = propTypes;
-Autocomplete.defaultProps = {
-	children: null,
-	value: null,
-	selectedLabel: "",
-	label: "",
-	labelProps: {},
-	labelSuffix: null,
-	validation: {},
-	placeholder: "",
-	className: "",
-	buttonProps: {},
-	clearButtonScreenReaderText: "Clear",
-	nullable: false,
-	onClear: null,
-	disabled: false,
-};
 
 Autocomplete.Option = Option;
 Autocomplete.Option.displayName = "Autocomplete.Option";

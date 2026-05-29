@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Listbox, Transition } from "@headlessui/react";
 import CheckIcon from "@heroicons/react/solid/CheckIcon";
 import SelectorIcon from "@heroicons/react/solid/SelectorIcon";
@@ -62,17 +63,17 @@ Option.propTypes = optionPropType;
 const Select = forwardRef( ( {
 	id,
 	value,
-	options,
-	children,
-	selectedLabel,
-	label,
-	labelProps,
-	labelSuffix,
+	options = [],
+	children = null,
+	selectedLabel = "",
+	label = "",
+	labelProps = {},
+	labelSuffix = null,
 	onChange,
-	disabled,
-	validation,
-	className,
-	buttonProps,
+	disabled = false,
+	validation = {},
+	className = "",
+	buttonProps = {},
 	...props
 }, ref ) => {
 	const selectedOption = useMemo( () => (
@@ -146,18 +147,6 @@ Select.propTypes = {
 	} ),
 	className: PropTypes.string,
 	buttonProps: PropTypes.object,
-};
-Select.defaultProps = {
-	options: [],
-	children: null,
-	selectedLabel: "",
-	label: "",
-	labelProps: {},
-	labelSuffix: null,
-	disabled: false,
-	validation: {},
-	className: "",
-	buttonProps: {},
 };
 
 Select.Option = Option;

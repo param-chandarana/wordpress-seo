@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React, { forwardRef } from "react";
@@ -21,10 +22,10 @@ const TextareaField = forwardRef( ( {
 	id,
 	label,
 	className = "",
-	description = "",
+	description = null,
 	validation = {},
-	disabled,
-	readOnly,
+	disabled = false,
+	readOnly = false,
 	...props
 }, ref ) => {
 	const { ids, describedBy } = useDescribedBy( id, { validation: validation?.message, description } );
@@ -73,13 +74,6 @@ TextareaField.propTypes = {
 		variant: PropTypes.string,
 		message: PropTypes.node,
 	} ),
-};
-TextareaField.defaultProps = {
-	className: "",
-	description: null,
-	disabled: false,
-	readOnly: false,
-	validation: {},
 };
 
 export default TextareaField;

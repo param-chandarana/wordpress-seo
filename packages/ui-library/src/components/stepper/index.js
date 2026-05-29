@@ -155,14 +155,6 @@ Stepper.propTypes = {
 	} ) ),
 	ProgressBar: PropTypes.elementType,
 };
-Stepper.defaultProps = {
-	className: "",
-	steps: [],
-	// eslint-disable-next-line no-undefined
-	children: undefined,
-	currentStep: 0,
-	ProgressBar: StepperProgressBar,
-};
 
 Stepper.Context = StepperContext;
 Stepper.ProgressBar = StepperProgressBar;
