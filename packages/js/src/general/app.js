@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Transition } from "@headlessui/react";
 import AdjustmentsIcon from "@heroicons/react/outline/AdjustmentsIcon";
 import BellIcon from "@heroicons/react/outline/BellIcon";
@@ -147,14 +148,14 @@ const App = () => {
 													"yoast-webinar-dashboard"
 												) }
 										/>
-										{ notices.length > 0 && <div> {
+										{ notices.length > 0 && <div className={ notices.filter( notice => ! notice.isDismissed ).length > 0 ? "yst-mb-8" : "" }> {
 											notices.map( ( notice, index ) =>
 												<Notice
 													key={ index }
 													id={ notice.id || "yoast-general-page-notice-" + index }
 													title={ notice.header }
 													isDismissable={ notice.isDismissable }
-													className={ notice.isDismissed ? "yst-hidden" : "yst-mb-3 last:yst-mb-8" }
+													className={ notice.isDismissed ? "yst-hidden" : "yst-mb-3" }
 												>
 													{ notice.content }
 												</Notice>
