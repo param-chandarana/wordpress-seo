@@ -78,9 +78,7 @@ const UpsellButton = ( { isWooCommerceActive, premiumLink, premiumUpsellConfig =
  */
 export const PremiumUpsellList = ( { premiumLink, premiumUpsellConfig = {}, isPromotionActive, isWooCommerceActive } ) => {
 	const isBlackFriday = isPromotionActive( "black-friday-promotion" );
-	const getBenefits = isWooCommerceActive
-		? getWooSeoBenefits
-		: getPremiumBenefits;
+	const getBenefits = isWooCommerceActive ? getWooSeoBenefits : getPremiumBenefits;
 
 	const nowIncluding = [
 		...( isWooCommerceActive ? [ "Yoast SEO Premium" ] : [] ),
@@ -89,11 +87,6 @@ export const PremiumUpsellList = ( { premiumLink, premiumUpsellConfig = {}, isPr
 		"Video SEO",
 		__( "Google Docs add-on (1 seat)", "wordpress-seo" ),
 	];
-
-	const badgeClasses = isWooCommerceActive
-		? classNames( "yst-bg-woo-light", "yst-text-[#006499]" )
-		: classNames( "yst-bg-primary-500", "yst-text-primary-500" );
-
 
 	return (
 		<Paper as="div" className="yst-max-w-4xl">
@@ -116,7 +109,10 @@ export const PremiumUpsellList = ( { premiumLink, premiumUpsellConfig = {}, isPr
 							<Badge
 								size="small"
 								variant="plain"
-								className={ classNames( "yst-mr-2 yst-bg-opacity-15", badgeClasses ) }
+								className={ classNames(
+									"yst-mr-2 yst-bg-opacity-15",
+									isWooCommerceActive ? "yst-bg-woo-light yst-text-[#006499]" : "yst-bg-primary-500 yst-text-primary-500"
+								) }
 								key={ `now-including-${ index }` }
 							>
 								{ addon }
