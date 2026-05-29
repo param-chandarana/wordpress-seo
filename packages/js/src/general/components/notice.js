@@ -31,13 +31,11 @@ export function Notice( { title, id, isDismissable, children, className = "" } )
 			<div className="yst-flex yst-flex-row yst-items-center yst-min-h-[24px]">
 				<span className="yoast-icon" />
 				{ title && <div className="yst-text-sm yst-font-medium" dangerouslySetInnerHTML={ { __html: title } } /> }
-				{ isDismissable && <button
-					type="button" className="notice-dismiss" onClick={ handleDismiss }
-				>
-					<span className="yst-sr-only">{ __( "Close", "wordpress-seo" ) }</span>
-				</button>
-
-				}
+				{ isDismissable && (
+					<button type="button" className="notice-dismiss" onClick={ handleDismiss }>
+						<span className="yst-sr-only">{ __( "Close", "wordpress-seo" ) }</span>
+					</button>
+				) }
 			</div>
 			{ children && (
 				<div className="yst-flex-1 yst-text-sm yst-max-w-[600px] yst-ps-[29px]" dangerouslySetInnerHTML={ { __html: children } } />
