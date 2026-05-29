@@ -17,7 +17,7 @@ import { ReactComponent as TrolleyIcon } from "../../../images/icon-trolley.svg"
  */
 const UpsellTitle = ( { isWooCommerceActive } ) => <div className="yst-flex yst-items-center">
 	<Title as="h2" size="4" className={ `yst-text-xl yst-font-semibold ${ isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500 " }` }>
-		{ (
+		{ sprintf(
 			/* translators: %s expands to product name: "Yoast WooCommerce SEO" or "Yoast SEO Premium" */
 			__( "Upgrade to %s", "wordpress-seo" ),
 			isWooCommerceActive ? "Yoast WooCommerce SEO" : "Yoast SEO Premium"
