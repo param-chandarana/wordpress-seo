@@ -35,14 +35,40 @@ yarn add yoastseo
 
 You can either use YoastSEO.js using the web worker API or use the internal components directly.
 
+### Entry points
+
+The package exposes two supported public entry points:
+
+| Import | Provides | Use it for |
+| --- | --- | --- |
+| `yoastseo` | The core analysis library: `Paper`, the assessors, the web-worker API (`AnalysisWebWorker`, `AnalysisWorkerWrapper`), `AbstractResearcher`, `helpers`, and related building blocks. | Orchestrating analysis. |
+| `yoastseo/researcher` | A `getResearcher( language )` factory that returns the language-specific `Researcher` **class** (falling back to the default Researcher for unsupported languages). | Resolving a per-language Researcher outside the WordPress plugin (Node, custom bundlers). |
+
+> **Why two entry points?** Each language `Researcher` transitively pulls in that language's data — function words, stemmers, transition words, and so on. Re-exporting the factory from the package root would bundle *every* language (~2.4 MB) into the core analysis bundle. Keeping `getResearcher` on its own entry keeps the core bundle lean and lets consumers load only the languages they need. (In the WordPress plugin the per-language Researchers are shipped as separate bundles for the same reason.)
+>
+> Deep imports such as `yoastseo/build/...` and `yoastseo/src/...` reach internal modules. They work, but they are implementation details — not part of the supported surface — so prefer the entry points above.
+
+Resolving a language Researcher (the language codes are listed under [Supported languages](#supported-languages); see the `getResearcher` factory for the full set):
+
+```js
+// CommonJS
+const getResearcher = require( "yoastseo/researcher" );
+// ESM
+import getResearcher from "yoastseo/researcher";
+
+const DutchResearcher = getResearcher( "nl" ); // Returns the class, not an instance.
+const researcher = new DutchResearcher();
+```
+
 ### Web Worker API
 
 Because a web worker must be a separate script in the browser, you first need to create a script to use inside the web worker:
 
 ```js
 import { AnalysisWebWorker } from "yoastseo";
-import EnglishResearcher from "yoastseo/build/languageProcessing/languages/en/Researcher";
+import getResearcher from "yoastseo/researcher";
 
+const EnglishResearcher = getResearcher( "en" );
 const worker = new AnalysisWebWorker( self, new EnglishResearcher() );
 // Any custom registration should be done here (or send messages via postMessage to the wrapper).
 worker.register();
