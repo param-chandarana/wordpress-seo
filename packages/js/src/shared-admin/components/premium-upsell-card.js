@@ -30,7 +30,7 @@ const UpsellButton = ( { isBlackFriday, link, linkProps } ) => {
 		{ ...linkProps }
 	>
 		<span>{ isBlackFriday ? __( "Buy now for 30% off", "wordpress-seo" ) : __( "Buy now", "wordpress-seo" ) }</span>
-		<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0 rtl:yst-rotate-180" />
+		<ArrowNarrowRightIcon className="yst-w-4 yst-h-4 yst--ms-1 yst-shrink-0 yst-icon-rtl" />
 	</Button>;
 };
 

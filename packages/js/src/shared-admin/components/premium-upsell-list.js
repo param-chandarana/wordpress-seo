@@ -110,7 +110,7 @@ export const PremiumUpsellList = ( { premiumLink, premiumUpsellConfig = {}, isPr
 								size="small"
 								variant="plain"
 								className={ classNames(
-									"yst-mr-2 yst-bg-opacity-15",
+									"yst-me-2 yst-bg-opacity-15",
 									isWooCommerceActive ? "yst-bg-woo-light yst-text-[#006499]" : "yst-bg-primary-500 yst-text-primary-500"
 								) }
 								key={ `now-including-${ index }` }
