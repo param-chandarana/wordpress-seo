@@ -101,7 +101,7 @@ export const PremiumUpsellList = ( { premiumLink, premiumUpsellConfig = {}, isPr
 				<div
 					className="yst-font-medium yst-text-slate-800 yst-text-xs yst-leading-7 yst-mt-2"
 				>
-					<span className="yst-mr-2">
+					<span className="yst-me-2">
 						{ __( "Now includes:", "wordpress-seo" ) }
 					</span>
 					<div className="yst-inline-block">
