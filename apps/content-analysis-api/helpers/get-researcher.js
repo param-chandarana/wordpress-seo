@@ -1,4 +1,5 @@
 const { helpers, languageProcessing } = require( "yoastseo" );
+const getLanguageResearcher = require( "yoastseo/researcher" );
 
 // Premium researches and helpers
 const keyphraseDistribution = languageProcessing.researches.keyphraseDistribution;
@@ -35,9 +36,9 @@ const MORPHOLOGY_VERSIONS = {
  * @returns {Researcher} The Researcher instance.
  */
 const getResearcher = ( language ) => {
-	// Retrieve the language-specific researcher
-	// eslint-disable-next-line global-require
-	const { "default": Researcher } = require( `yoastseo/build/languageProcessing/languages/${language}/Researcher` );
+	// Resolve the language-specific Researcher class through the public entry instead of
+	// deep-requiring `yoastseo/build/...`.
+	const Researcher = getLanguageResearcher( language );
 	const researcher = new Researcher();
 
 	// Add Yoast SEO Premium researches/helpers/configs (optional)
