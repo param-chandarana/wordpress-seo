@@ -43,7 +43,7 @@ const UpsellButton = ( { isBlackFriday, link, linkProps } ) => {
  */
 const UpsellTitle = ( { isWooCommerceActive } ) => <Title
 	as="h2"
-	className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold yst-whitespace-nowrap",
+	className={ classNames( "yst-mt-6 yst-text-xl yst-font-semibold",
 		isWooCommerceActive ? "yst-text-woo-light" : "yst-text-primary-500" )
 	}
 >
