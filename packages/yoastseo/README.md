@@ -7,6 +7,8 @@ This library can generate metrics about a text and assess these metrics to give 
 ![Screenshot of the assessment of the given text](images/assessments.png)
 
 ## Documentation
+* A high-level [architecture overview](https://github.com/Yoast/wordpress-seo/blob/trunk/packages/yoastseo/OVERVIEW.md) of the package.
+* A [glossary](https://github.com/Yoast/wordpress-seo/blob/trunk/packages/yoastseo/GLOSSARY.md) of the core domain concepts (Paper, Assessor, Researcher, etc.).
 * A list of all the [assessors](https://github.com/Yoast/wordpress-seo/blob/trunk/packages/yoastseo/src/scoring/assessors/ASSESSORS%20OVERVIEW.md)
 * Information on the [scoring system of the assessments](https://github.com/Yoast/wordpress-seo/blob/trunk/packages/yoastseo/src/scoring/assessments/README.md)
   * [SEO analysis scoring](https://github.com/Yoast/wordpress-seo/blob/trunk/packages/yoastseo/src/scoring/assessments/SCORING%20SEO.md)
