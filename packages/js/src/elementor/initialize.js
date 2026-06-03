@@ -15,6 +15,17 @@ import initReplaceVarPlugin, { addReplacement, ReplaceVar } from "./replaceVars/
 
 
 /**
+ * Returns true when Elementor's V4 atomic editor is active.
+ *
+ * @returns {boolean} Whether V4 atomic editor mode is active.
+ */
+function isElementorV4AtomicActive() {
+	const flag = window.wpseoScriptData?.isElementorV4Atomic;
+	// WP localised booleans may arrive as `true` or `"1"`.
+	return flag === true || flag === "1";
+}
+
+/**
  * Initializes Yoast SEO for Elementor.
  *
  * @returns {void}
@@ -24,8 +35,11 @@ function initialize() {
 	window.YoastSEO = window.YoastSEO || {};
 	window.YoastSEO.store = initEditorStore();
 
-	// Initialize the editor data watcher.
-	initElementorWatcher();
+	// The V4 atomic editor uses its own watcher (`elementor-v4` bundle) so the legacy
+	// DOM watcher is skipped to avoid double-dispatch on `setEditorDataContent`.
+	if ( ! isElementorV4AtomicActive() ) {
+		initElementorWatcher();
+	}
 
 	/*
 	 * Expose pluggable.
