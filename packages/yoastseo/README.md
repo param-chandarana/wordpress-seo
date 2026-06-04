@@ -62,6 +62,8 @@ const DutchResearcher = getResearcher( "nl" ); // Returns the class, not an inst
 const researcher = new DutchResearcher();
 ```
 
+> **Bundle-size note.** `getResearcher` statically references every supported language, so a bundler that follows this entry includes all of them (~2.4 MB of language data) — the map cannot be tree-shaken down to one language. Size-sensitive consumers that only ever need a single language can instead deep-import just that one (`yoastseo/build/languageProcessing/languages/<lang>/Researcher`), accepting that deep paths are internal and unsupported.
+
 ### Web Worker API
 
 Because a web worker must be a separate script in the browser, you first need to create a script to use inside the web worker:
