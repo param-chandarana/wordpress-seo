@@ -52,9 +52,11 @@ const getResearcher = ( language ) => {
 
 	// Retrieve the morphology data (optional)
 	const dataVersion = MORPHOLOGY_VERSIONS[ language ];
-	// eslint-disable-next-line global-require
-	const premiumData = require( `yoastseo/premium-configuration/data/morphologyData-${language}-${dataVersion}.json` );
-	researcher.addResearchData( "morphology", premiumData );
+	if ( dataVersion ) {
+		// eslint-disable-next-line global-require
+		const premiumData = require( `yoastseo/premium-configuration/data/morphologyData-${language}-${dataVersion}.json` );
+		researcher.addResearchData( "morphology", premiumData );
+	}
 
 	return researcher;
 };
