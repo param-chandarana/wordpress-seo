@@ -16,6 +16,7 @@ describe( "getResearcher", () => {
 
 	it( "reduces a locale to its language part before resolving", () => {
 		expect( getResearcher( "en_US" ) ).toBe( EnglishResearcher );
+		expect( getResearcher( "en-US" ) ).toBe( EnglishResearcher );
 	} );
 
 	it( "falls back to the default Researcher for an unsupported language", () => {
