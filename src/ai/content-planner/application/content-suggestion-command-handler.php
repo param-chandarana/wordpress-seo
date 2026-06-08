@@ -8,6 +8,8 @@ use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_List;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Parameters;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Response;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Post_List;
 use Yoast\WP\SEO\AI\Content_Planner\Infrastructure\Recent_Content\Recent_Content_Collector;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
@@ -80,15 +82,14 @@ class Content_Suggestion_Command_Handler {
 	 * @throws Insufficient_Scope_Exception  When the OAuth path's token is missing the required scope.
 	 * @throws OAuth_Forbidden_Exception     When yoast-ai returns a non-scope 403 on the OAuth wire.
 	 *
-	 * @return Content_Suggestion_List A list of content suggestions.
+	 * @return Content_Suggestion_Response The response containing suggestions and recent content.
 	 */
-	public function handle( Content_Suggestion_Command $command ): Content_Suggestion_List {
+	public function handle( Content_Suggestion_Command $command ): Content_Suggestion_Response {
 		$recent_content = $this->recent_content_collector->collect( $command->get_post_type() );
 		$about_page     = $this->recent_content_collector->collect_about_page( $command->get_post_type() );
-		$recent_content = $recent_content->to_array();
 
 		$content = [
-			'posts' => $recent_content,
+			'posts' => $recent_content->to_array(),
 		];
 		if ( $about_page ) {
 			$content['about_page'] = $about_page;
@@ -114,7 +115,22 @@ class Content_Suggestion_Command_Handler {
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
-		return $this->build_suggestions_array( $response );
+		return $this->build_response( $response, $recent_content );
+	}
+
+	/**
+	 * Builds a response object bundling the content suggestions with the recent content used to generate them.
+	 *
+	 * @param Response  $response       The API response.
+	 * @param Post_List $recent_content The recent content passed to the AI API.
+	 *
+	 * @return Content_Suggestion_Response The response containing suggestions and recent content.
+	 */
+	public function build_response( Response $response, Post_List $recent_content ): Content_Suggestion_Response {
+		return new Content_Suggestion_Response(
+			$this->build_suggestions_array( $response ),
+			$recent_content,
+		);
 	}
 
 	/**

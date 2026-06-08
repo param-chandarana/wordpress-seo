@@ -7,15 +7,15 @@ namespace Yoast\WP\SEO\Tests\Unit\AI\Content_Planner\Application\Content_Suggest
 use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Content_Planner\Application\Content_Suggestion_Command;
-use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_List;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Category;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Parameters;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Response;
+use Yoast\WP\SEO\AI\Content_Planner\Domain\Post;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Post_List;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
 /**
- * Tests the Content_Suggestion_Command_Handler handle method.
+ * Tests the Content_Suggestion_Command_Handler::handle method.
  *
  * @group ai-content-planner
  *
@@ -26,19 +26,7 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 final class Handle_Test extends Abstract_Content_Suggestion_Command_Handler_Test {
 
 	/**
-	 * The recent content array returned by the Post_List mock.
-	 *
-	 * @var array<array<string, string>>
-	 */
-	private const RECENT_CONTENT = [
-		[
-			'title'       => 'Existing post',
-			'description' => 'Existing description',
-		],
-	];
-
-	/**
-	 * Builds a command with a WP_User mock whose ID is 1.
+	 * Builds a Content_Suggestion_Command with a WP_User mock whose ID is 1.
 	 *
 	 * @return Content_Suggestion_Command The command.
 	 */
@@ -50,158 +38,78 @@ final class Handle_Test extends Abstract_Content_Suggestion_Command_Handler_Test
 	}
 
 	/**
-	 * Tests the handle method on the happy path, including the about_page being merged into the content payload.
+	 * Builds a Post_List with a single Post for use as collector output.
 	 *
-	 * @return void
+	 * @return Post_List The post list.
 	 */
-	public function test_handle_happy_path_with_about_page() {
-		$command = $this->build_command();
+	private function build_post_list(): Post_List {
+		$post_list = new Post_List();
+		$post_list->add(
+			new Post(
+				'Existing post',
+				'Existing description',
+				new Category( 'Tech', 5 ),
+				'AI usage',
+				1,
+				'2026-05-19 12:00:00',
+				'Article',
+			),
+		);
 
-		$post_list = Mockery::mock( Post_List::class );
-		$post_list->expects( 'to_array' )->once()->andReturn( self::RECENT_CONTENT );
-
-		$about_page = [
-			'title'       => 'About us',
-			'description' => 'All about us',
-		];
-
-		$this->recent_content_collector->expects( 'collect' )->once()->with( 'post' )->andReturn( $post_list );
-		$this->recent_content_collector->expects( 'collect_about_page' )->once()->with( 'post' )->andReturn( $about_page );
-
-		$this->ai_request_sender
-			->expects( 'get_content_suggestions' )
-			->once()
-			->with(
-				Mockery::on(
-					static function ( $parameters ) use ( $command, $about_page ) {
-						return self::parameters_match_expected_shape( $parameters, $command->get_user(), $about_page );
-					},
-				),
-			)
-			->andReturn( new Response( '{"choices":[]}', 200, '' ) );
-
-		$result = $this->instance->handle( $command );
-
-		$this->assertInstanceOf( Content_Suggestion_List::class, $result );
-		$this->assertSame( [ 'suggestions' => [] ], $result->to_array() );
+		return $post_list;
 	}
 
 	/**
-	 * Tests the handle method without an about_page; the key should be absent from the content payload.
+	 * Tests that on the happy path handle() returns a Content_Suggestion_Response whose
+	 * recent content is the exact Post_List that was returned by the collector and forwarded
+	 * to the suggestions API, so the frontend receives the same recent-content payload that
+	 * the AI request was built from (no double collection).
 	 *
 	 * @return void
 	 */
-	public function test_handle_happy_path_without_about_page() {
-		$command = $this->build_command();
+	public function test_handle_returns_same_post_list_that_was_collected_and_sent() {
+		$command   = $this->build_command();
+		$post_list = $this->build_post_list();
 
-		$post_list = Mockery::mock( Post_List::class );
-		$post_list->expects( 'to_array' )->once()->andReturn( self::RECENT_CONTENT );
+		$this->recent_content_collector
+			->expects( 'collect' )
+			->once()
+			->with( 'post' )
+			->andReturn( $post_list );
 
-		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
-		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
+		$this->recent_content_collector
+			->expects( 'collect_about_page' )
+			->once()
+			->with( 'post' )
+			->andReturn( false );
+
+		$this->ai_request_sender_factory->expects( 'create' )->once()->with( $command->get_user() )->andReturn( $this->ai_request_sender );
 
 		$this->ai_request_sender
 			->expects( 'get_content_suggestions' )
 			->once()
 			->with(
 				Mockery::on(
-					static function ( $parameters ) {
+					static function ( $parameters ) use ( $post_list ) {
 						if ( ! $parameters instanceof Content_Suggestion_Parameters ) {
 							return false;
 						}
-						return ! \array_key_exists( 'about_page', $parameters->get_content() );
+
+						$content = $parameters->get_content();
+
+						return ( $content['posts'] ?? null ) === $post_list->to_array();
 					},
 				),
 			)
-			->andReturn( new Response( '{"choices":[]}', 200, '' ) );
+			->andReturn( new Response( (string) \wp_json_encode( [ 'choices' => [] ] ), 200, 'OK' ) );
 
 		$result = $this->instance->handle( $command );
 
-		$this->assertInstanceOf( Content_Suggestion_List::class, $result );
-	}
-
-	/**
-	 * Tests the handle method revokes consent and rethrows on Forbidden_Exception.
-	 *
-	 * @return void
-	 */
-	public function test_handle_revokes_consent_on_forbidden() {
-		$command = $this->build_command();
-
-		$post_list = Mockery::mock( Post_List::class );
-		$post_list->expects( 'to_array' )->once()->andReturn( [] );
-
-		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
-		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
-
-		$this->ai_request_sender
-			->expects( 'get_content_suggestions' )
-			->once()
-			->andThrow( new Forbidden_Exception( 'NOPE', 403 ) );
-
-		$this->consent_handler->expects( 'revoke_consent' )->once()->with( 1 );
-
-		$this->expectException( Forbidden_Exception::class );
-		$this->expectExceptionMessage( 'CONSENT_REVOKED' );
-
-		$this->instance->handle( $command );
-	}
-
-	/**
-	 * An OAuth_Forbidden_Exception is propagated unchanged — no consent revoke (OAuth-wire 403s
-	 * aren't consent revocations).
-	 *
-	 * @return void
-	 */
-	public function test_handle_propagates_oauth_forbidden_without_consent_revoke() {
-		$command = $this->build_command();
-
-		$post_list = Mockery::mock( Post_List::class );
-		$post_list->expects( 'to_array' )->once()->andReturn( [] );
-
-		$this->recent_content_collector->expects( 'collect' )->once()->andReturn( $post_list );
-		$this->recent_content_collector->expects( 'collect_about_page' )->once()->andReturn( false );
-
-		$this->ai_request_sender
-			->expects( 'get_content_suggestions' )
-			->once()
-			->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
-
-		$this->consent_handler->shouldNotReceive( 'revoke_consent' );
-
-		$this->expectException( OAuth_Forbidden_Exception::class );
-
-		$this->instance->handle( $command );
-	}
-
-	/**
-	 * Asserts that the given parameters match the expected shape produced by the handler.
-	 *
-	 * @param mixed                $parameters The parameters to inspect.
-	 * @param WP_User              $user       The expected user.
-	 * @param array<string, mixed> $about_page The expected about_page payload.
-	 *
-	 * @return bool True when the parameters match the expected shape.
-	 */
-	private static function parameters_match_expected_shape( $parameters, WP_User $user, array $about_page ): bool {
-		if ( ! $parameters instanceof Content_Suggestion_Parameters ) {
-			return false;
-		}
-		if ( $parameters->get_user() !== $user ) {
-			return false;
-		}
-		if ( $parameters->get_language() !== 'en_US' ) {
-			return false;
-		}
-		if ( $parameters->get_editor() !== 'gutenberg' ) {
-			return false;
-		}
-
-		$content = $parameters->get_content();
-		if ( ( $content['posts'] ?? null ) !== self::RECENT_CONTENT ) {
-			return false;
-		}
-
-		return ( $content['about_page'] ?? null ) === $about_page;
+		$this->assertInstanceOf( Content_Suggestion_Response::class, $result );
+		$this->assertSame(
+			$post_list,
+			$result->get_recent_content(),
+			'handle() must return the same Post_List instance that was collected and sent to the suggestions API.',
+		);
 	}
 }

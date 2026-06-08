@@ -73,9 +73,8 @@ class Content_Outline_Command_Handler {
 	 * @return Section_List A list of outline sections.
 	 */
 	public function handle( Content_Outline_Command $command ): Section_List {
-		$recent_content = $this->recent_content_collector->collect( $command->get_post_type() );
+		$recent_content = $command->get_recent_content();
 		$about_page     = $this->recent_content_collector->collect_about_page( $command->get_post_type() );
-		$recent_content = $recent_content->to_array();
 
 		$existing_posts = \array_map(
 			static function ( $post ) {

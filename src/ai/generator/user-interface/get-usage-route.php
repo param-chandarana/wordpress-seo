@@ -6,7 +6,9 @@ namespace Yoast\WP\SEO\AI\Generator\User_Interface;
 use WP_REST_Response;
 use WPSEO_Addon_Manager;
 use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
+use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Too_Many_Requests_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
@@ -48,6 +50,13 @@ class Get_Usage_Route implements Route_Interface {
 	private $ai_request_sender_factory;
 
 	/**
+	 * The consent handler instance.
+	 *
+	 * @var Consent_Handler
+	 */
+	private $consent_handler;
+
+	/**
 	 * Represents the add-on manager.
 	 *
 	 * @var WPSEO_Addon_Manager
@@ -67,11 +76,13 @@ class Get_Usage_Route implements Route_Interface {
 	 * Class constructor.
 	 *
 	 * @param AI_Request_Sender_Factory $ai_request_sender_factory The auth strategy factory.
+	 * @param Consent_Handler           $consent_handler           The consent handler instance.
 	 * @param WPSEO_Addon_Manager       $addon_manager             The add-on manager instance.
 	 */
-	public function __construct( AI_Request_Sender_Factory $ai_request_sender_factory, WPSEO_Addon_Manager $addon_manager ) {
+	public function __construct( AI_Request_Sender_Factory $ai_request_sender_factory, Consent_Handler $consent_handler, WPSEO_Addon_Manager $addon_manager ) {
 		$this->addon_manager             = $addon_manager;
 		$this->ai_request_sender_factory = $ai_request_sender_factory;
+		$this->consent_handler           = $consent_handler;
 	}
 
 	/**
@@ -113,6 +124,10 @@ class Get_Usage_Route implements Route_Interface {
 			$response   = $sender->get_usage( $parameters );
 			$data       = \json_decode( $response->get_body() );
 		} catch ( Remote_Request_Exception | WP_Request_Exception $e ) {
+			if ( $e instanceof Forbidden_Exception ) {
+				// The API signals that consent is revoked; sync local state.
+				$this->consent_handler->revoke_consent( $user->ID );
+			}
 			$message = [
 				'errorMessage'    => $e->getMessage(),
 				'errorIdentifier' => $e->get_error_identifier(),

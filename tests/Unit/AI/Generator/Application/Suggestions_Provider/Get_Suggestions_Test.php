@@ -96,6 +96,7 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 			'',
 			'',
 			'',
+			false,
 		);
 	}
 

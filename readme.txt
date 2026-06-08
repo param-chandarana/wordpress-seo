@@ -316,20 +316,20 @@ Release date: 2026-06-09
 * Prevents unnecessary expensive DB queries when admin pages are being visited.
 * Reduces loading times of the author sitemap on sites with many users.
 * Significantly reduces loading times of the root sitemap on sites with many users.
-* Updates the design of the focus keyphrase field to use the `@yoast/ui-library` `TextField`, with an inline description and a "Type here" placeholder.
-* Wraps the focus keyphrase field in a collapsible that defaults to open, mirroring the other analysis sections.
-* Replaces the legacy `Get related keyphrases` button text with `Discover related keyphrases` and a leading search icon.
-* Adds a new `RelatedKeyphraseInputField` component to the editor modules to render the updated related keyphrase input field in YoasSEO Premium.
 
 #### Bugfixes
 
+* Ensures compatibility with the React 19 version bundled in Gutenberg 23.3 (WordPress 7.1), fixing several screens and components that could otherwise fail to render.
 * Fixes a bug where NaN was set as the Primary taxonomy and triggered a console error.
+* Fixes a bug where the dismiss button in the Webinar promo notice in general page was transparent.
 * Improves post editor rendering performance by stabilising Redux selector and `withSelect` references in multiple components to prevent unnecessary re-renders.
 
 #### Other
 
-* Introduces the `wpseo_custom_fields_pre_query` filter, allowing sites to short-circuit the potentiall expensive custom-fields lookup in Yoast settings, with a pre-computed list or a custom query.
-* Sets the title of a child task to "(no title)" in the task list, when the related post has no title.
+* Bumps `@yoast/ai-frontend` to 0.25.0 to reduce the plugin zip size.
+* Introduces the `wpseo_custom_fields_pre_query` filter, allowing sites to short-circuit the potentially expensive custom-fields lookup in Yoast settings, with a pre-computed list or a custom query.
+* Removes the Yoast group from the filter bar on the WordPress plugins list.
+* Sets the title of a child task to \"(no title)\" in the task list, when the related post has no title.
 
 = 27.7 =
 
