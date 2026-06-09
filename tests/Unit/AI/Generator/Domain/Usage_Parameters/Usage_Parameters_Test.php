@@ -16,7 +16,8 @@ use Yoast\WP\SEO\Tests\Unit\TestCase;
  *
  * @covers \Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters::__construct
  * @covers \Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters::get_user
- * @covers \Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters::is_unlimited
+ * @covers \Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters::is_free
+ * @covers \Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters::get_period
  */
 final class Usage_Parameters_Test extends TestCase {
 
@@ -28,22 +29,23 @@ final class Usage_Parameters_Test extends TestCase {
 	public function test_constructor_populates_all_fields() {
 		$user = Mockery::mock( WP_User::class );
 
-		$parameters = new Usage_Parameters( $user, true );
+		$parameters = new Usage_Parameters( $user, true, '2026-06' );
 
 		$this->assertSame( $user, $parameters->get_user() );
-		$this->assertTrue( $parameters->is_unlimited() );
+		$this->assertTrue( $parameters->is_free() );
+		$this->assertSame( '2026-06', $parameters->get_period() );
 	}
 
 	/**
-	 * Tests the is_unlimited getter returns false when set to false.
+	 * Tests the is_free getter returns false when set to false.
 	 *
 	 * @return void
 	 */
-	public function test_is_unlimited_returns_false_when_set_false() {
+	public function test_is_free_returns_false_when_set_false() {
 		$user = Mockery::mock( WP_User::class );
 
-		$parameters = new Usage_Parameters( $user, false );
+		$parameters = new Usage_Parameters( $user, false, '2026-06' );
 
-		$this->assertFalse( $parameters->is_unlimited() );
+		$this->assertFalse( $parameters->is_free() );
 	}
 }

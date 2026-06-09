@@ -9,6 +9,7 @@ use Yoast\WP\SEO\AI\Authentication\Application\AI_Request_Sender_Factory;
 use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Too_Many_Requests_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
@@ -119,13 +120,12 @@ class Get_Usage_Route implements Route_Interface {
 		$is_woo_product_entity = $request->get_param( 'is_woo_product_entity' );
 		$user                  = \wp_get_current_user();
 		try {
-			$parameters = new Usage_Parameters( $user, $this->is_unlimited( $is_woo_product_entity ) );
+			$parameters = new Usage_Parameters( $user, $this->is_free( $is_woo_product_entity ), \gmdate( 'Y-m' ) );
 			$sender     = $this->ai_request_sender_factory->create( $user );
 			$response   = $sender->get_usage( $parameters );
 			$data       = \json_decode( $response->get_body() );
 		} catch ( Remote_Request_Exception | WP_Request_Exception $e ) {
-			if ( $e instanceof Forbidden_Exception ) {
-				// The API signals that consent is revoked; sync local state.
+			if ( $e instanceof Forbidden_Exception && ! $e instanceof Insufficient_Scope_Exception ) {
 				$this->consent_handler->revoke_consent( $user->ID );
 			}
 			$message = [
@@ -146,16 +146,19 @@ class Get_Usage_Route implements Route_Interface {
 	}
 
 	/**
-	 * Whether the current request qualifies for unlimited usage.
+	 * Whether the current request should read the time-unbound free-usage bucket.
+	 *
+	 * A user without the relevant paid subscription is on the free tier, whose usage is tracked in
+	 * the free-usage bucket rather than per period.
 	 *
 	 * @param bool $is_woo_product_entity Whether the request is for a WooCommerce product entity.
 	 *
-	 * @return bool True when the user has the relevant subscription.
+	 * @return bool True when the user is on the free tier for this request type.
 	 */
-	public function is_unlimited( $is_woo_product_entity = false ): bool {
+	public function is_free( $is_woo_product_entity = false ): bool {
 		if ( $is_woo_product_entity ) {
-			return $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::WOOCOMMERCE_SLUG );
+			return ! $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::WOOCOMMERCE_SLUG );
 		}
-		return $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::PREMIUM_SLUG );
+		return ! $this->addon_manager->has_valid_subscription( WPSEO_Addon_Manager::PREMIUM_SLUG );
 	}
 }

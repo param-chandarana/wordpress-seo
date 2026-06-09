@@ -13,7 +13,6 @@ use Yoast\WP\SEO\AI\Content_Planner\Domain\Post_List;
 use Yoast\WP\SEO\AI\Content_Planner\Infrastructure\Recent_Content\Recent_Content_Collector;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
@@ -80,7 +79,6 @@ class Content_Suggestion_Command_Handler {
 	 * @throws Unauthorized_Exception        When the API returns an unauthorized response and retry is exhausted.
 	 * @throws Forbidden_Exception           When consent has been revoked.
 	 * @throws Insufficient_Scope_Exception  When the OAuth path's token is missing the required scope.
-	 * @throws OAuth_Forbidden_Exception     When yoast-ai returns a non-scope 403 on the OAuth wire.
 	 *
 	 * @return Content_Suggestion_Response The response containing suggestions and recent content.
 	 */
@@ -104,15 +102,13 @@ class Content_Suggestion_Command_Handler {
 		try {
 			$sender   = $this->ai_request_sender_factory->create( $command->get_user() );
 			$response = $sender->get_content_suggestions( $parameters );
-		} catch ( Insufficient_Scope_Exception | OAuth_Forbidden_Exception $exception ) {
-			// OAuth-side 4xxs are deployment/policy problems, not consent revocation.
+		} catch ( Insufficient_Scope_Exception $exception ) {
+
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
-			// Follow the API in the consent being revoked (Use case: user sent an e-mail to revoke?).
-			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
 			$this->consent_handler->revoke_consent( $command->get_user()->ID );
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
 			throw new Forbidden_Exception( 'CONSENT_REVOKED', $exception->getCode() );
-			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		return $this->build_response( $response, $recent_content );

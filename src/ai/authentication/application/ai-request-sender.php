@@ -9,8 +9,6 @@ use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Outline_Parameters;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
@@ -20,13 +18,6 @@ use YoastSEO_Vendor\Psr\Log\NullLogger;
 
 /**
  * Sends an authenticated AI request using a primary strategy, with an optional fallback.
- *
- * Each public method maps to a single AI endpoint: it builds the HTTP Request from a typed Parameter
- * object and dispatches it. Strategies own dispatch entirely. The sender only chooses between primary
- * and fallback: it tries the primary, falls back to the secondary on Remote_Request_Exception when a
- * fallback is set, and never retries the same strategy. Insufficient_Scope_Exception and
- * OAuth_Forbidden_Exception always propagate without invoking the fallback — different token
- * semantics mean the legacy path would mask the real config bug.
  */
 class AI_Request_Sender implements LoggerAwareInterface {
 
@@ -139,7 +130,7 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	 * @return Response The parsed response.
 	 */
 	public function get_usage( Usage_Parameters $parameters ): Response {
-		$action_path = $parameters->is_unlimited() ? '/usage/' . \gmdate( 'Y-m' ) : '/usage/free-usages';
+		$action_path = $parameters->is_free() ? '/usage/free-usages' : '/usage/' . $parameters->get_period();
 		$request     = new Request( $action_path, [], [], false );
 
 		return $this->send( $request, $parameters->get_user() );
@@ -159,10 +150,6 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	public function send( Request $request, WP_User $user ): Response {
 		try {
 			return $this->primary->send( $request, $user );
-		}
-		catch ( Insufficient_Scope_Exception | OAuth_Forbidden_Exception $exception ) {
-			// OAuth-specific 4xxs never fall back — different token semantics would mask the config bug.
-			throw $exception;
 		}
 		catch ( Remote_Request_Exception $exception ) {
 			if ( $this->fallback === null ) {

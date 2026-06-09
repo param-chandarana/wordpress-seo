@@ -8,7 +8,7 @@ use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 
 /**
@@ -101,13 +101,12 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 	}
 
 	/**
-	 * An OAuth_Forbidden_Exception (typed wrapper around a non-scope 403 on the OAuth wire) is
-	 * propagated unchanged — consent is NOT revoked, since "consent" is a Token-flow concept that
-	 * doesn't apply on the OAuth wire.
+	 * An Insufficient_Scope_Exception is propagated unchanged — a scope failure is a deployment/
+	 * token-issuance problem, so consent is NOT revoked even though the class extends Forbidden_Exception.
 	 *
 	 * @return void
 	 */
-	public function test_get_suggestions_propagates_oauth_forbidden_without_consent_revoke() {
+	public function test_get_suggestions_propagates_insufficient_scope_without_consent_revoke() {
 		$user     = Mockery::mock( WP_User::class );
 		$user->ID = 1;
 
@@ -116,11 +115,11 @@ final class Get_Suggestions_Test extends Abstract_Suggestions_Provider_Test {
 			->expects( 'get_suggestions' )
 			->once()
 			->with( Mockery::type( Suggestions_Parameters::class ) )
-			->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
+			->andThrow( new Insufficient_Scope_Exception( 'INSUFFICIENT_SCOPE', 403, 'INSUFFICIENT_SCOPE' ) );
 
 		$this->consent_handler->shouldNotReceive( 'revoke_consent' );
 
-		$this->expectException( OAuth_Forbidden_Exception::class );
+		$this->expectException( Insufficient_Scope_Exception::class );
 
 		$this->instance->get_suggestions(
 			$user,

@@ -19,21 +19,30 @@ class Usage_Parameters {
 	private $user;
 
 	/**
-	 * Whether the user has unlimited usage (paid subscription) for this request type.
+	 * Whether usage should be read from the time-unbound free-usage bucket rather than a period.
 	 *
 	 * @var bool
 	 */
-	private $is_unlimited;
+	private $is_free;
+
+	/**
+	 * The usage period (e.g. `2026-06`) the request applies to when it is not a free-usage request.
+	 *
+	 * @var string
+	 */
+	private $period;
 
 	/**
 	 * The constructor.
 	 *
-	 * @param WP_User $user         The user.
-	 * @param bool    $is_unlimited Whether the user has unlimited usage.
+	 * @param WP_User $user    The user.
+	 * @param bool    $is_free Whether to read the free-usage bucket instead of a period.
+	 * @param string  $period  The usage period (e.g. `2026-06`); ignored for free-usage requests.
 	 */
-	public function __construct( WP_User $user, bool $is_unlimited ) {
-		$this->user         = $user;
-		$this->is_unlimited = $is_unlimited;
+	public function __construct( WP_User $user, bool $is_free, string $period ) {
+		$this->user    = $user;
+		$this->is_free = $is_free;
+		$this->period  = $period;
 	}
 
 	/**
@@ -46,11 +55,20 @@ class Usage_Parameters {
 	}
 
 	/**
-	 * Returns whether the user has unlimited usage.
+	 * Returns whether usage should be read from the free-usage bucket.
 	 *
-	 * @return bool True when the user has unlimited usage.
+	 * @return bool True when the request targets the free-usage bucket.
 	 */
-	public function is_unlimited(): bool {
-		return $this->is_unlimited;
+	public function is_free(): bool {
+		return $this->is_free;
+	}
+
+	/**
+	 * Returns the usage period the request applies to.
+	 *
+	 * @return string The usage period (e.g. `2026-06`).
+	 */
+	public function get_period(): string {
+		return $this->period;
 	}
 }

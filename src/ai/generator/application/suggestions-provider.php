@@ -16,7 +16,6 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Internal_Server_Error_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Not_Found_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Payment_Required_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Request_Timeout_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Service_Unavailable_Exception;
@@ -104,16 +103,12 @@ class Suggestions_Provider {
 		try {
 			$sender   = $this->ai_request_sender_factory->create( $user );
 			$response = $sender->get_suggestions( $parameters );
-		} catch ( Insufficient_Scope_Exception | OAuth_Forbidden_Exception $exception ) {
-			// OAuth-side 4xxs are deployment/policy problems, not consent revocation.
-			// Surface them unchanged so the consent flow doesn't fire incorrectly.
+		} catch ( Insufficient_Scope_Exception $exception ) {
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
-			// Follow the API in the consent being revoked (Use case: user sent an e-mail to revoke?).
-			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
 			$this->consent_handler->revoke_consent( $user->ID );
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw new Forbidden_Exception( 'CONSENT_REVOKED', $exception->getCode() );
-			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
 		return $this->build_suggestions_array( $response )->to_array();

@@ -11,8 +11,8 @@ use Yoast\WP\SEO\AI\HTTP_Request\Application\Response_Validator;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 use Yoast\WP\SEO\AI\HTTP_Request\Infrastructure\API_Client;
@@ -30,9 +30,7 @@ use YoastSEO_Vendor\Psr\Log\NullLogger;
  * Delegates the actual HTTP call to `MyYoast_Client::authenticated_request()`, which owns DPoP
  * proof generation, nonce handling, and the use_dpop_nonce auto-retry. This strategy keeps only
  * the AI-specific concerns: scope selection, identifying the WP user on every call (POST → body,
- * GET → query parameter), translating the HTTP_Response into the AI Response domain object, and
- * mapping OAuth-specific 4xx semantics (`insufficient_scope`, plain 403) onto typed exceptions
- * the sender refuses to fall back over.
+ * GET → query parameter), and translating the HTTP_Response into the AI Response domain object.
  */
 class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterface {
 
@@ -90,9 +88,10 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 * @return Response The parsed response.
 	 *
 	 * @throws Auth_Strategy_Unavailable_Exception When the site token cannot be acquired, so the sender falls back without claiming the request itself failed.
-	 * @throws Bad_Request_Exception               On transport failure, or when the status doesn't match a more specific exception.
-	 * @throws Insufficient_Scope_Exception        When the response is a 403 insufficient_scope, so the sender propagates without falling back.
-	 * @throws OAuth_Forbidden_Exception           When the response is any other 403; bypasses fallback to avoid masking the OAuth config bug with the Token path.
+	 * @throws WP_Request_Exception                On transport failure, matching the error identifier the legacy Token path reports.
+	 * @throws Bad_Request_Exception               When the status doesn't match a more specific exception.
+	 * @throws Insufficient_Scope_Exception        When the response is a 403 insufficient_scope, so callers can keep consent untouched.
+	 * @throws Forbidden_Exception                 When the response is any other 403; callers revoke consent, same as the legacy path.
 	 * @throws Unauthorized_Exception              When the response is a 401 (cached site token is cleared before rethrowing).
 	 */
 	public function send( Request $request, WP_User $user ): Response {
@@ -117,8 +116,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 		];
 
 		if ( $request->is_post() ) {
-			$body = \array_merge( $request->get_body(), [ 'user_id' => $user_id ] );
-			// phpcs:ignore Yoast.Yoast.JsonEncodeAlternative.Found -- format_json_encode mirrors what API_Client uses for POST bodies.
+			$body            = \array_merge( $request->get_body(), [ 'user_id' => $user_id ] );
 			$options['body'] = WPSEO_Utils::format_json_encode( $body );
 		}
 		else {
@@ -126,6 +124,12 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 		}
 
 		$http_response = $this->myyoast_client->authenticated_request( $method, $url, $token_set, $options );
+
+		if ( $http_response->is_transport_failure() ) {
+			$this->logger->warning( 'OAuth send: transport failure reaching yoast-ai; surfacing as WP_HTTP_REQUEST_ERROR.' );
+
+			throw new WP_Request_Exception( \esc_html( $http_response->get_body_value( 'error_description', '' ) ) );
+		}
 
 		try {
 			return $this->response_validator->assert_success( $this->to_response( $http_response ) );
@@ -135,25 +139,15 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 			$this->myyoast_client->clear_site_token( $resource );
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
-			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Internal exception data, not output.
-			if ( $this->is_insufficient_scope( $exception ) ) {
-				$this->logger->warning( 'OAuth send: yoast-ai returned insufficient_scope; surfacing without fallback.' );
-				throw new Insufficient_Scope_Exception(
-					'INSUFFICIENT_SCOPE',
-					$exception->getCode(),
-					'INSUFFICIENT_SCOPE',
-					$exception,
-					$exception->get_response_headers(),
-				);
+			if ( ! $this->is_insufficient_scope( $exception ) ) {
+				throw $exception;
 			}
-			// Plain 403 on the OAuth wire isn't a "consent revoked" — that's a Token-flow concept.
-			// Translate to a typed exception so the sender bypasses fallback and callers don't
-			// auto-revoke consent on the user's behalf.
-			$this->logger->warning( 'OAuth send: yoast-ai returned forbidden ({error_id}); surfacing without fallback.', [ 'error_id' => $exception->get_error_identifier() ] );
-			throw new OAuth_Forbidden_Exception(
-				$exception->getMessage(),
+			$this->logger->warning( 'OAuth send: yoast-ai returned insufficient_scope.' );
+			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
+			throw new Insufficient_Scope_Exception(
+				'INSUFFICIENT_SCOPE',
 				$exception->getCode(),
-				$exception->get_error_identifier(),
+				'INSUFFICIENT_SCOPE',
 				$exception,
 				$exception->get_response_headers(),
 			);

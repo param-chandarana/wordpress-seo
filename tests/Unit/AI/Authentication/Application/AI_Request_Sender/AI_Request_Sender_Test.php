@@ -14,7 +14,6 @@ use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
@@ -137,41 +136,26 @@ final class AI_Request_Sender_Test extends TestCase {
 	}
 
 	/**
-	 * Insufficient_Scope_Exception always propagates without invoking the fallback.
+	 * Insufficient_Scope_Exception is fallback-eligible: the sender carries no OAuth-specific
+	 * knowledge, so it falls back to the secondary strategy like any Remote_Request_Exception.
 	 *
 	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_send_propagates_insufficient_scope_without_fallback(): void {
+	public function test_send_falls_back_on_insufficient_scope(): void {
+		$fallback_response = new Response( '{}', 200, 'OK' );
+
 		$this->primary->expects( 'send' )->andThrow( new Insufficient_Scope_Exception( 'INSUFFICIENT_SCOPE', 403, 'INSUFFICIENT_SCOPE' ) );
-		$this->fallback->shouldNotReceive( 'send' );
+		$this->fallback->expects( 'send' )->andReturn( $fallback_response );
 
 		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
 
-		$this->expectException( Insufficient_Scope_Exception::class );
-		$sender->get_suggestions( $this->suggestions_parameters() );
+		$this->assertSame( $fallback_response, $sender->get_suggestions( $this->suggestions_parameters() ) );
 	}
 
 	/**
-	 * OAuth_Forbidden_Exception always propagates without invoking the fallback.
-	 *
-	 * @covers ::send
-	 *
-	 * @return void
-	 */
-	public function test_send_propagates_oauth_forbidden_without_fallback(): void {
-		$this->primary->expects( 'send' )->andThrow( new OAuth_Forbidden_Exception( 'policy', 403, 'policy' ) );
-		$this->fallback->shouldNotReceive( 'send' );
-
-		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
-
-		$this->expectException( OAuth_Forbidden_Exception::class );
-		$sender->get_suggestions( $this->suggestions_parameters() );
-	}
-
-	/**
-	 * A plain Forbidden_Exception (not the OAuth-specific subclasses) still falls back when a fallback exists.
+	 * A plain Forbidden_Exception still falls back when a fallback exists.
 	 *
 	 * @covers ::send
 	 *
@@ -340,24 +324,24 @@ final class AI_Request_Sender_Test extends TestCase {
 	}
 
 	/**
-	 * Builds the expected GET Request for the usage endpoint when the user has unlimited usage.
+	 * Builds the expected GET Request for the usage endpoint of a given period (non-free request).
 	 *
 	 * @covers ::get_usage
 	 *
 	 * @return void
 	 */
-	public function test_get_usage_builds_unlimited_request(): void {
-		$parameters     = new Usage_Parameters( $this->user, true );
-		$response       = new Response( '{}', 200, 'OK' );
-		$expected_month = \gmdate( 'Y-m' );
+	public function test_get_usage_builds_period_request(): void {
+		$period     = '2026-06';
+		$parameters = new Usage_Parameters( $this->user, false, $period );
+		$response   = new Response( '{}', 200, 'OK' );
 
 		$this->primary
 			->expects( 'send' )
 			->with(
 				Mockery::on(
-					static function ( $request ) use ( $expected_month ) {
+					static function ( $request ) use ( $period ) {
 						return $request instanceof Request
-							&& $request->get_action_path() === '/usage/' . $expected_month
+							&& $request->get_action_path() === '/usage/' . $period
 							&& $request->is_post() === false
 							&& $request->get_body() === []
 							&& $request->get_headers() === [];
@@ -373,14 +357,14 @@ final class AI_Request_Sender_Test extends TestCase {
 	}
 
 	/**
-	 * Builds the expected GET Request for the free-usages endpoint when the user does not have unlimited usage.
+	 * Builds the expected GET Request for the free-usages endpoint when the request targets the free bucket.
 	 *
 	 * @covers ::get_usage
 	 *
 	 * @return void
 	 */
 	public function test_get_usage_builds_free_usages_request(): void {
-		$parameters = new Usage_Parameters( $this->user, false );
+		$parameters = new Usage_Parameters( $this->user, true, '2026-06' );
 		$response   = new Response( '{}', 200, 'OK' );
 
 		$this->primary

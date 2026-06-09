@@ -8,11 +8,11 @@ use Brain\Monkey\Functions;
 use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Domain\Exceptions\Auth_Strategy_Unavailable_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Internal_Server_Error_Exception;
-use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\OAuth_Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Token_Request_Failed_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Domain\HTTP_Response;
@@ -268,13 +268,14 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	}
 
 	/**
-	 * Plain 403 (no insufficient_scope marker) is translated into OAuth_Forbidden_Exception.
+	 * A plain 403 (no insufficient_scope marker) propagates unchanged as a Forbidden_Exception so the
+	 * caller revokes consent, exactly as on the legacy wire.
 	 *
 	 * @covers ::send
 	 *
 	 * @return void
 	 */
-	public function test_send_throws_oauth_forbidden_on_plain_403(): void {
+	public function test_send_propagates_forbidden_on_plain_403(): void {
 		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
 		$this->myyoast_client->expects( 'authenticated_request' )
 			->andReturn(
@@ -291,9 +292,10 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 
 		try {
 			$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
-			$this->fail( 'Expected OAuth_Forbidden_Exception.' );
+			$this->fail( 'Expected Forbidden_Exception.' );
 		}
-		catch ( OAuth_Forbidden_Exception $exception ) {
+		catch ( Forbidden_Exception $exception ) {
+			$this->assertNotInstanceOf( Insufficient_Scope_Exception::class, $exception );
 			$this->assertSame( 'policy_failure', $exception->get_error_identifier() );
 		}
 	}
@@ -332,14 +334,16 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	}
 
 	/**
-	 * Transport failure (status 0) is mapped to Bad_Request_Exception by the validator.
+	 * Transport failure (status 0) is mapped to WP_Request_Exception, matching the legacy Token path's
+	 * WP_HTTP_REQUEST_ERROR identifier so both auth paths report network errors identically.
 	 *
 	 * @covers ::send
-	 * @covers ::to_response
 	 *
 	 * @return void
 	 */
-	public function test_send_maps_transport_failure_to_bad_request(): void {
+	public function test_send_maps_transport_failure_to_wp_request_exception(): void {
+		Functions\when( 'esc_html' )->returnArg();
+
 		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
 		$this->myyoast_client->expects( 'authenticated_request' )
 			->andReturn(
@@ -353,7 +357,13 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 				),
 			);
 
-		$this->expectException( Bad_Request_Exception::class );
-		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+		try {
+			$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+			$this->fail( 'Expected WP_Request_Exception.' );
+		}
+		catch ( WP_Request_Exception $exception ) {
+			$this->assertSame( 'WP_HTTP_REQUEST_ERROR', $exception->get_error_identifier() );
+			$this->assertSame( 'DNS lookup failed', $exception->getMessage() );
+		}
 	}
 }
