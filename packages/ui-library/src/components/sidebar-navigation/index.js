@@ -1,6 +1,7 @@
 import { noop, uniq } from "lodash";
 import PropTypes from "prop-types";
 import React, { createContext, useCallback, useContext, useState } from "react";
+import Divider from "../../elements/divider";
 import { Collapsible } from "./collapsible";
 import { Icon } from "./icon";
 import { Item } from "./item";
@@ -82,5 +83,6 @@ SidebarNavigation.Item = Item;
 SidebarNavigation.Collapsible = Collapsible;
 SidebarNavigation.Link = Link;
 SidebarNavigation.Icon = Icon;
+SidebarNavigation.Divider = Divider;
 
 export default SidebarNavigation;
