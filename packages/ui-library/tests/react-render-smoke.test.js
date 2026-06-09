@@ -40,7 +40,6 @@ import {
 	CheckboxGroup,
 	ChildrenLimiter,
 	Code,
-	Divider,
 	DropdownMenu,
 	ErrorBoundary,
 	FeatureUpsell,
@@ -111,7 +110,6 @@ const cases = [
 		props: { id: "cb", name: "cb", value: "cb" },
 	},
 	{ name: "Code", Component: Code, props: { children: "code" } },
-	{ name: "Divider", Component: Divider, props: { children: "or" } },
 	{ name: "Label", Component: Label, props: {} },
 	{ name: "Link", Component: Link, props: { children: "Link" } },
 	{
