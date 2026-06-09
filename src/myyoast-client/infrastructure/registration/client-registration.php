@@ -36,7 +36,6 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	private const OPTION_KEY_PREFIX       = 'wpseo_myyoast_client_registration_';
 	private const ENCRYPTION_CONTEXT      = 'yoast-myyoast-registration-credentials';
 	private const DCR_LOCK_TTL_IN_SECONDS = \MINUTE_IN_SECONDS;
-	private const SITE_CONNECTED_OPTION   = 'wpseo_myyoast_site_connected';
 
 	/**
 	 * The discovery client.
@@ -176,6 +175,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 				$rat,
 				( $stored['registration_client_uri'] ?? '' ),
 				( $stored['metadata'] ?? [] ),
+				( $stored['validated_uris'] ?? [] ),
 			);
 		} catch ( InvalidArgumentException $e ) {
 			$this->logger->error( 'Stored registration data is invalid, clearing registration: {error}', [ 'error' => $e->getMessage() ] );
@@ -388,7 +388,6 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	public function forget_registration(): void {
 		unset( $this->cached_registered_clients[ $this->get_option_key() ] );
 		\delete_option( $this->get_option_key() );
-		\delete_option( self::SITE_CONNECTED_OPTION );
 	}
 
 	/**
@@ -416,23 +415,56 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	}
 
 	/**
-	 * Whether the site has completed the OAuth authorization-code flow at least once.
+	 * Whether at least one redirect URI has completed the OAuth authorization-code flow on this site.
+	 *
+	 * The state lives on the stored registration, so it is invalidated automatically when the client
+	 * is deregistered or replaced (e.g. after a redirect-URI change).
 	 *
 	 * @return bool
 	 */
-	public function is_site_connected(): bool {
-		return (bool) \get_option( self::SITE_CONNECTED_OPTION, false );
+	public function has_validated_redirect_uri(): bool {
+		$registered_client = $this->get_registered_client();
+
+		return $registered_client !== null && $registered_client->get_validated_uris() !== [];
 	}
 
 	/**
-	 * Marks the site as having completed the auth-code flow at least once.
+	 * Records that the given redirect URI has completed the authorization-code flow.
 	 *
-	 * Idempotent: `update_option()` short-circuits when the stored value is unchanged.
+	 * No-op when the site is not registered or the URI was already recorded. Idempotent:
+	 * `update_option()` short-circuits when the stored value is unchanged.
+	 *
+	 * @param string $redirect_uri The redirect URI that completed the auth-code flow.
 	 *
 	 * @return void
 	 */
-	public function mark_site_connected(): void {
-		\update_option( self::SITE_CONNECTED_OPTION, true, false );
+	public function mark_uri_validated( string $redirect_uri ): void {
+		$registered_client = $this->get_registered_client();
+		if ( $registered_client === null ) {
+			return;
+		}
+
+		$validated_uris = $registered_client->get_validated_uris();
+		if ( \in_array( $redirect_uri, $validated_uris, true ) ) {
+			return;
+		}
+
+		$validated_uris[] = $redirect_uri;
+
+		$option_key = $this->get_option_key();
+		$stored     = \get_option( $option_key, [] );
+		if ( \is_array( $stored ) ) {
+			$stored['validated_uris'] = $validated_uris;
+			\update_option( $option_key, $stored, false );
+		}
+
+		$this->cached_registered_clients[ $option_key ] = new Registered_Client(
+			$registered_client->get_client_id(),
+			$registered_client->get_registration_access_token(),
+			$registered_client->get_registration_client_uri(),
+			$registered_client->get_metadata(),
+			$validated_uris,
+		);
 	}
 
 	/**
@@ -453,6 +485,14 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 		$metadata = $response_body;
 		unset( $metadata['registration_access_token'] );
 
+		// Preserve validation state across a key rotation (same client_id), but reset it for a fresh
+		// registration: a new client_id means the redirect URIs must be re-validated from scratch.
+		$existing       = $this->get_registered_client();
+		$validated_uris = [];
+		if ( $existing !== null && $existing->get_client_id() === $response_body['client_id'] ) {
+			$validated_uris = $existing->get_validated_uris();
+		}
+
 		\update_option(
 			$option_key,
 			[
@@ -460,6 +500,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 				'encrypted_rat'           => $encrypted_rat,
 				'registration_client_uri' => ( $response_body['registration_client_uri'] ?? '' ),
 				'metadata'                => $metadata,
+				'validated_uris'          => $validated_uris,
 			],
 			false,
 		);
@@ -469,6 +510,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 			( $response_body['registration_access_token'] ?? '' ),
 			( $response_body['registration_client_uri'] ?? '' ),
 			$metadata,
+			$validated_uris,
 		);
 
 		return $this->cached_registered_clients[ $option_key ];

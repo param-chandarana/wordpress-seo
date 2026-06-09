@@ -42,12 +42,24 @@ class Registered_Client {
 	private $metadata;
 
 	/**
+	 * The redirect URIs that have completed the authorization-code flow on this site.
+	 *
+	 * Stored alongside the client (rather than in $metadata, which is reserved for standardized
+	 * authorization-server metadata) so the validation state is invalidated automatically whenever
+	 * the registration is removed or replaced.
+	 *
+	 * @var string[]
+	 */
+	private $validated_uris;
+
+	/**
 	 * Registered_Client constructor.
 	 *
 	 * @param string                              $client_id                 The registered client ID.
 	 * @param string                              $registration_access_token The registration access token.
 	 * @param string                              $registration_client_uri   The management endpoint URL.
 	 * @param array<string, string|array<string>> $metadata                  Additional metadata from the registration response.
+	 * @param string[]                            $validated_uris            Redirect URIs that have completed the auth-code flow.
 	 *
 	 * @throws InvalidArgumentException If client_id is empty.
 	 */
@@ -57,7 +69,8 @@ class Registered_Client {
 		#[SensitiveParameter]
 		string $registration_access_token,
 		string $registration_client_uri,
-		array $metadata = []
+		array $metadata = [],
+		array $validated_uris = []
 	) {
 		if ( $client_id === '' ) {
 			throw new InvalidArgumentException( 'Registered_Client requires a non-empty client_id.' );
@@ -67,6 +80,7 @@ class Registered_Client {
 		$this->registration_access_token = $registration_access_token;
 		$this->registration_client_uri   = $registration_client_uri;
 		$this->metadata                  = $metadata;
+		$this->validated_uris            = \array_values( $validated_uris );
 	}
 
 	/**
@@ -106,6 +120,15 @@ class Registered_Client {
 	}
 
 	/**
+	 * Returns the redirect URIs that have completed the authorization-code flow on this site.
+	 *
+	 * @return string[]
+	 */
+	public function get_validated_uris(): array {
+		return $this->validated_uris;
+	}
+
+	/**
 	 * Converts the DTO to an associative array for storage.
 	 *
 	 * @return array<string, string|array<string>>
@@ -116,6 +139,7 @@ class Registered_Client {
 			'registration_access_token' => $this->registration_access_token,
 			'registration_client_uri'   => $this->registration_client_uri,
 			'metadata'                  => $this->metadata,
+			'validated_uris'            => $this->validated_uris,
 		];
 	}
 }

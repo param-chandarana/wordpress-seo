@@ -350,8 +350,9 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->andReturn( $token_set );
 
 		$this->client_registration
-			->expects( 'mark_site_connected' )
-			->once();
+			->expects( 'mark_uri_validated' )
+			->once()
+			->with( 'https://example.com/callback' );
 
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
@@ -403,8 +404,9 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->andReturn( $token_set );
 
 		$this->client_registration
-			->expects( 'mark_site_connected' )
-			->once();
+			->expects( 'mark_uri_validated' )
+			->once()
+			->with( 'https://example.com/callback' );
 
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
@@ -469,8 +471,9 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->andReturn( [ 'sub' => 'user-1' ] );
 
 		$this->client_registration
-			->expects( 'mark_site_connected' )
-			->once();
+			->expects( 'mark_uri_validated' )
+			->once()
+			->with( 'https://example.com/callback' );
 
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 
@@ -484,7 +487,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 	 *
 	 * @return void
 	 */
-	public function test_exchange_code_does_not_mark_site_connected_on_failure() {
+	public function test_exchange_code_does_not_mark_uri_validated_on_failure() {
 		$this->expiring_store
 			->expects( 'get_for_user' )
 			->once()
@@ -517,7 +520,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			)
 			->andThrow( new Token_Request_Failed_Exception( 'invalid_grant', 'Authorization code expired.' ) );
 
-		// The strict mock fails the test if mark_site_connected is called without an expectation.
+		// The strict mock fails the test if mark_uri_validated is called without an expectation.
 		$this->expectException( Token_Request_Failed_Exception::class );
 
 		$this->instance->exchange_code( 1, 'auth-code', 'the-state' );
@@ -600,8 +603,9 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->andReturn( $token_set );
 
 		$this->client_registration
-			->expects( 'mark_site_connected' )
-			->once();
+			->expects( 'mark_uri_validated' )
+			->once()
+			->with( 'https://example.com/callback' );
 
 		$result = $this->instance->exchange_code( 1, 'auth-code', 'the-state' );
 

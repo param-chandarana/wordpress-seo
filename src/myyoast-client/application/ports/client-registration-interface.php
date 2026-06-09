@@ -81,22 +81,25 @@ interface Client_Registration_Interface {
 	public function rotate_dpop_keys(): void;
 
 	/**
-	 * Whether the site has completed the OAuth authorization-code flow at least once.
+	 * Whether at least one redirect URI has completed the OAuth authorization-code flow on this site.
 	 *
 	 * True once any user on this site has completed the auth-code flow against the current
-	 * registration. Reset when the registration is forgotten (deregister, stale-redirect-URI
-	 * re-registration, or full local-data wipe).
+	 * registration. The state lives on the stored registration, so it resets when the registration is
+	 * forgotten (deregister, stale-redirect-URI re-registration, or full local-data wipe).
 	 *
 	 * @return bool
 	 */
-	public function is_site_connected(): bool;
+	public function has_validated_redirect_uri(): bool;
 
 	/**
-	 * Marks the site as having completed the auth-code flow at least once.
+	 * Records that the given redirect URI has completed the authorization-code flow.
 	 *
-	 * Called by the authorization-code handler on every successful exchange; idempotent.
+	 * Called by the authorization-code handler on every successful exchange; idempotent and a no-op
+	 * when the site is not registered.
+	 *
+	 * @param string $redirect_uri The redirect URI that completed the auth-code flow.
 	 *
 	 * @return void
 	 */
-	public function mark_site_connected(): void;
+	public function mark_uri_validated( string $redirect_uri ): void;
 }

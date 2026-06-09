@@ -763,19 +763,19 @@ final class MyYoast_Client_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that is_site_connected delegates to the client registration port.
+	 * Tests that has_validated_redirect_uri delegates to the client registration port.
 	 *
-	 * @covers ::is_site_connected
+	 * @covers ::has_validated_redirect_uri
 	 *
 	 * @return void
 	 */
-	public function test_is_site_connected() {
+	public function test_has_validated_redirect_uri() {
 		$this->client_registration
-			->expects( 'is_site_connected' )
+			->expects( 'has_validated_redirect_uri' )
 			->once()
 			->andReturn( true );
 
-		$this->assertTrue( $this->instance->is_site_connected() );
+		$this->assertTrue( $this->instance->has_validated_redirect_uri() );
 	}
 
 	/**

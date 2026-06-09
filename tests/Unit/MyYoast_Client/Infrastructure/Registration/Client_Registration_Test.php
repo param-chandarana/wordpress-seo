@@ -40,13 +40,6 @@ final class Client_Registration_Test extends TestCase {
 	private const OPTION_KEY = 'wpseo_myyoast_client_registration_' . self::ISSUER_KEY;
 
 	/**
-	 * The expected site-connected option key.
-	 *
-	 * @var string
-	 */
-	private const SITE_CONNECTED_OPTION = 'wpseo_myyoast_site_connected';
-
-	/**
 	 * The test instance.
 	 *
 	 * @var Client_Registration
@@ -213,11 +206,6 @@ final class Client_Registration_Test extends TestCase {
 		Functions\expect( 'delete_option' )
 			->once()
 			->with( self::OPTION_KEY )
-			->andReturn( true );
-
-		Functions\expect( 'delete_option' )
-			->once()
-			->with( self::SITE_CONNECTED_OPTION )
 			->andReturn( true );
 
 		$this->instance->forget_registration();
@@ -387,11 +375,6 @@ final class Client_Registration_Test extends TestCase {
 			->with( self::OPTION_KEY )
 			->andReturn( true );
 
-		Functions\expect( 'delete_option' )
-			->once()
-			->with( self::SITE_CONNECTED_OPTION )
-			->andReturn( true );
-
 		$this->assertTrue( $this->instance->deregister() );
 	}
 
@@ -480,51 +463,113 @@ final class Client_Registration_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that is_site_connected returns false when the option is unset.
+	 * Tests that has_validated_redirect_uri returns false when the site is not registered.
 	 *
-	 * @covers ::is_site_connected
+	 * @covers ::has_validated_redirect_uri
 	 *
 	 * @return void
 	 */
-	public function test_is_site_connected_returns_false_when_unset() {
+	public function test_has_validated_redirect_uri_returns_false_when_not_registered() {
 		Functions\expect( 'get_option' )
 			->once()
-			->with( self::SITE_CONNECTED_OPTION, false )
+			->with( self::OPTION_KEY, false )
 			->andReturn( false );
 
-		$this->assertFalse( $this->instance->is_site_connected() );
+		$this->assertFalse( $this->instance->has_validated_redirect_uri() );
 	}
 
 	/**
-	 * Tests that is_site_connected returns true when the option is set.
+	 * Tests that has_validated_redirect_uri returns false when no redirect URI has been validated yet.
 	 *
-	 * @covers ::is_site_connected
+	 * @covers ::has_validated_redirect_uri
 	 *
 	 * @return void
 	 */
-	public function test_is_site_connected_returns_true_when_set() {
+	public function test_has_validated_redirect_uri_returns_false_when_none_validated() {
+		$this->mock_get_client();
+
+		$this->assertFalse( $this->instance->has_validated_redirect_uri() );
+	}
+
+	/**
+	 * Tests that has_validated_redirect_uri returns true when a redirect URI has been validated.
+	 *
+	 * @covers ::has_validated_redirect_uri
+	 *
+	 * @return void
+	 */
+	public function test_has_validated_redirect_uri_returns_true_when_a_uri_is_validated() {
 		Functions\expect( 'get_option' )
-			->once()
-			->with( self::SITE_CONNECTED_OPTION, false )
-			->andReturn( true );
+			->with( self::OPTION_KEY, false )
+			->andReturn(
+				[
+					'client_id'               => 'cid',
+					'encrypted_rat'           => 'encrypted-rat',
+					'registration_client_uri' => 'https://my.yoast.com/api/oauth/reg/cid',
+					'metadata'                => [],
+					'validated_uris'          => [ 'https://example.com/callback' ],
+				],
+			);
 
-		$this->assertTrue( $this->instance->is_site_connected() );
+		$this->encryption->expects( 'decrypt' )->andReturn( 'decrypted-rat' );
+
+		$this->assertTrue( $this->instance->has_validated_redirect_uri() );
 	}
 
 	/**
-	 * Tests that mark_site_connected writes the option without autoload.
+	 * Tests that mark_uri_validated appends the redirect URI to the stored registration.
 	 *
-	 * @covers ::mark_site_connected
+	 * @covers ::mark_uri_validated
 	 *
 	 * @return void
 	 */
-	public function test_mark_site_connected_writes_option() {
+	public function test_mark_uri_validated_appends_and_persists() {
+		$stored = [
+			'client_id'               => 'cid',
+			'encrypted_rat'           => 'encrypted-rat',
+			'registration_client_uri' => 'https://my.yoast.com/api/oauth/reg/cid',
+			'metadata'                => [],
+		];
+
+		// Matches both the get_registered_client() read (default false) and the re-read for the update (default []).
+		Functions\expect( 'get_option' )
+			->with( self::OPTION_KEY, Mockery::any() )
+			->andReturn( $stored );
+
+		$this->encryption->expects( 'decrypt' )->andReturn( 'decrypted-rat' );
+
 		Functions\expect( 'update_option' )
 			->once()
-			->with( self::SITE_CONNECTED_OPTION, true, false )
+			->with(
+				self::OPTION_KEY,
+				Mockery::on(
+					static function ( $option ) {
+						return ( $option['validated_uris'] ?? null ) === [ 'https://example.com/callback' ];
+					},
+				),
+				false,
+			)
 			->andReturn( true );
 
-		$this->instance->mark_site_connected();
+		$this->instance->mark_uri_validated( 'https://example.com/callback' );
+	}
+
+	/**
+	 * Tests that mark_uri_validated is a no-op when the site is not registered.
+	 *
+	 * @covers ::mark_uri_validated
+	 *
+	 * @return void
+	 */
+	public function test_mark_uri_validated_is_noop_when_not_registered() {
+		Functions\expect( 'get_option' )
+			->once()
+			->with( self::OPTION_KEY, false )
+			->andReturn( false );
+
+		Functions\expect( 'update_option' )->never();
+
+		$this->instance->mark_uri_validated( 'https://example.com/callback' );
 	}
 
 	/**

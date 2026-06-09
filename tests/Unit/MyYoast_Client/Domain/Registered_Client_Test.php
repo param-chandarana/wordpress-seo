@@ -21,6 +21,7 @@ final class Registered_Client_Test extends TestCase {
 	 * @covers ::get_registration_access_token
 	 * @covers ::get_registration_client_uri
 	 * @covers ::get_metadata
+	 * @covers ::get_validated_uris
 	 *
 	 * @return void
 	 */
@@ -30,12 +31,14 @@ final class Registered_Client_Test extends TestCase {
 			'rat-456',
 			'https://my.yoast.com/api/oauth/reg/client-123',
 			[ 'software_statement' => 'jwt-here' ],
+			[ 'https://example.com/callback' ],
 		);
 
 		$this->assertSame( 'client-123', $dto->get_client_id() );
 		$this->assertSame( 'rat-456', $dto->get_registration_access_token() );
 		$this->assertSame( 'https://my.yoast.com/api/oauth/reg/client-123', $dto->get_registration_client_uri() );
 		$this->assertSame( [ 'software_statement' => 'jwt-here' ], $dto->get_metadata() );
+		$this->assertSame( [ 'https://example.com/callback' ], $dto->get_validated_uris() );
 	}
 
 	/**
@@ -47,27 +50,30 @@ final class Registered_Client_Test extends TestCase {
 	 * @return void
 	 */
 	public function test_to_array() {
-		$dto   = new Registered_Client( 'cid', 'rat', 'https://example.com/reg/cid', [ 'key' => 'val' ] );
+		$dto   = new Registered_Client( 'cid', 'rat', 'https://example.com/reg/cid', [ 'key' => 'val' ], [ 'https://example.com/callback' ] );
 		$array = $dto->to_array();
 
 		$this->assertSame( 'cid', $array['client_id'] );
 		$this->assertSame( 'rat', $array['registration_access_token'] );
 		$this->assertSame( 'https://example.com/reg/cid', $array['registration_client_uri'] );
 		$this->assertSame( [ 'key' => 'val' ], $array['metadata'] );
+		$this->assertSame( [ 'https://example.com/callback' ], $array['validated_uris'] );
 	}
 
 	/**
-	 * Tests that default metadata is an empty array.
+	 * Tests that metadata and validated_uris default to empty arrays.
 	 *
 	 * @covers ::__construct
 	 * @covers ::get_metadata
+	 * @covers ::get_validated_uris
 	 *
 	 * @return void
 	 */
-	public function test_default_metadata() {
+	public function test_defaults() {
 		$dto = new Registered_Client( 'cid', 'rat', 'https://example.com/reg/cid' );
 
 		$this->assertSame( [], $dto->get_metadata() );
+		$this->assertSame( [], $dto->get_validated_uris() );
 	}
 
 	/**

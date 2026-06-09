@@ -476,15 +476,15 @@ class MyYoast_Client implements LoggerAwareInterface {
 	}
 
 	/**
-	 * Whether the site has completed the OAuth authorization-code flow at least once.
+	 * Whether at least one redirect URI has completed the OAuth authorization-code flow on this site.
 	 *
 	 * Required because MyYoast only embeds the site_url claim in client_credentials tokens after the
 	 * client has at least one verified redirect URI — i.e. after a user has completed the auth-code
-	 * flow on this site. The flag is set on first successful exchange and cleared on deregister.
+	 * flow on this site. The state lives on the stored registration and resets on deregister.
 	 *
 	 * @return bool
 	 */
-	public function is_site_connected(): bool {
-		return $this->client_registration->is_site_connected();
+	public function has_validated_redirect_uri(): bool {
+		return $this->client_registration->has_validated_redirect_uri();
 	}
 }
