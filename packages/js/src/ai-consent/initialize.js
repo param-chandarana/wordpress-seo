@@ -1,6 +1,6 @@
 import { useSelect } from "@wordpress/data";
 import domReady from "@wordpress/dom-ready";
-import { Fragment, render, useCallback, useRef } from "@wordpress/element";
+import { createRoot, Fragment, useCallback, useRef } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
 import { Modal, useToggleState } from "@yoast/ui-library";
 import classNames from "classnames";
@@ -80,6 +80,6 @@ domReady( () => {
 
 	const root = document.getElementById( "ai-generator-consent" );
 	if ( root ) {
-		render( <App />, root );
+		createRoot( root ).render( <App /> );
 	}
 } );
