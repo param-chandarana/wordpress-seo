@@ -6,6 +6,7 @@ import { useArgs } from "@storybook/preview-api";
 import React, { useCallback, useEffect } from "react";
 import SidebarNavigation from ".";
 import { InteractiveDocsPage } from "../../../.storybook/interactive-docs-page";
+import Button from "../../elements/button";
 import Table from "../../elements/table";
 
 const Template = ( args ) => {
@@ -315,6 +316,38 @@ export const NotUsingBuildingBlocks = {
 	},
 };
 
+export const Divider = {
+	render: Template.bind( {} ),
+	parameters: {
+		docs: {
+			description: {
+				story: "The subcomponent `SidebarNavigation.Divider` separates groups of items. Pass `children` to center a label or a control, such as a \"Show more\" toggle, on the line.",
+			},
+		},
+	},
+	args: {
+		children: (
+			<SidebarNavigation.Sidebar className="yst-w-1/3">
+				<SidebarNavigation.List>
+					<SidebarNavigation.Item>
+						<SidebarNavigation.Link href="#1">Link 1</SidebarNavigation.Link>
+					</SidebarNavigation.Item>
+					<SidebarNavigation.Item>
+						<SidebarNavigation.Link href="#2">Link 2</SidebarNavigation.Link>
+					</SidebarNavigation.Item>
+					<SidebarNavigation.Divider className="yst-my-2" />
+					<SidebarNavigation.Item>
+						<SidebarNavigation.Link href="#3">Link 3</SidebarNavigation.Link>
+					</SidebarNavigation.Item>
+					<SidebarNavigation.Divider className="yst-my-2">
+						<Button variant="secondary" size="small">Show 3 more</Button>
+					</SidebarNavigation.Divider>
+				</SidebarNavigation.List>
+			</SidebarNavigation.Sidebar>
+		),
+	},
+};
+
 export default {
 	title: "2) Components/Sidebar navigation",
 	component: SidebarNavigation,
@@ -375,7 +408,7 @@ export default {
 	parameters: {
 		docs: {
 			description: {
-				component: "A sidebar navigation component. Contains the subcomponents `Sidebar`, `Mobile`, `MenuItem` and `SubmenuItem` and contains the hook `useNavigationContext`.",
+				component: "A sidebar navigation component. Contains the subcomponents `Sidebar`, `Mobile`, `MenuItem`, `SubmenuItem` and `Divider` and contains the hook `useNavigationContext`.",
 			},
 			page: () => <InteractiveDocsPage
 				stories={ [
@@ -384,6 +417,7 @@ export default {
 					Mobile,
 					UsingBuildingBlocks,
 					NotUsingBuildingBlocks,
+					Divider,
 					NavigationContext,
 				] }
 			/>,
