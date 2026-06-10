@@ -56,6 +56,20 @@ const paragraphNode = ( content, tag = "p" ) => ( {
 } );
 
 /**
+ * Builds a classic text-editor widget node (TinyMCE).
+ *
+ * @param {string} html Raw HTML content from the TinyMCE editor.
+ * @returns {Object} The node.
+ */
+const textEditorNode = ( html ) => ( {
+	id: "ted",
+	elType: "widget",
+	widgetType: "text-editor",
+	settings: { editor: html },
+	elements: [],
+} );
+
+/**
  * Builds an atomic flexbox container with the given children.
  *
  * @param {Object[]} children The child nodes.
@@ -263,6 +277,16 @@ describe( "content-walker per-widget extractors", () => {
 			);
 		} );
 
+		it( "passes the raw HTML string through unchanged, preserving internal anchor tags", () => {
+			const node = {
+				widgetType: "text-editor",
+				settings: { editor: "<p>Read our <a href=\"/about/\">about page</a> for details.</p>" },
+			};
+			expect( EXTRACTORS[ "text-editor" ]( node ) ).toBe(
+				"<p>Read our <a href=\"/about/\">about page</a> for details.</p>"
+			);
+		} );
+
 		it( "returns empty when editor content is absent or empty", () => {
 			expect( EXTRACTORS[ "text-editor" ]( { widgetType: "text-editor", settings: {} } ) ).toBe( "" );
 			expect( EXTRACTORS[ "text-editor" ]( { widgetType: "text-editor", settings: { editor: "" } } ) ).toBe( "" );
@@ -365,6 +389,18 @@ describe( walkAtomicTree, () => {
 		expect( html ).toContain( "<h2>A subsection</h2>" );
 		expect( ( html.match( /<p>/g ) || [] ) ).toHaveLength( 3 );
 		expect( html.indexOf( "<h1>" ) ).toBeLessThan( html.indexOf( "<h2>" ) );
+	} );
+
+	it( "emits internal links from a text-editor widget so InternalLinksAssessment can count them", () => {
+		const tree = [
+			headingNode( "Our story", "h2" ),
+			textEditorNode( "<p>Learn more on our <a href=\"/about/\">about page</a> or <a href=\"/contact/\">contact us</a>.</p>" ),
+		];
+
+		const html = walkAtomicTree( tree );
+
+		expect( html ).toContain( "<a href=\"/about/\">" );
+		expect( html ).toContain( "<a href=\"/contact/\">" );
 	} );
 
 	it( "is defensive against malformed nodes (null entries, missing settings)", () => {
