@@ -6,7 +6,6 @@ import { useArgs } from "@storybook/preview-api";
 import React, { useCallback, useEffect } from "react";
 import SidebarNavigation from ".";
 import { InteractiveDocsPage } from "../../../.storybook/interactive-docs-page";
-import Button from "../../elements/button";
 import Table from "../../elements/table";
 
 const Template = ( args ) => {
@@ -316,33 +315,34 @@ export const NotUsingBuildingBlocks = {
 	},
 };
 
-export const Divider = {
+export const MenuItemWithLimiter = {
 	render: Template.bind( {} ),
+	name: "Menu item with limiter",
 	parameters: {
 		docs: {
 			description: {
-				story: "The subcomponent `SidebarNavigation.Divider` separates groups of items. Pass `children` to center a label or a control, such as a \"Show more\" toggle, on the line.",
+				story: "The subcomponent `SidebarNavigation.MenuItemWithLimiter` is a `MenuItem` with a built-in `ChildrenLimiter` and a show-more/less toggle (a pill centered on a `Divider`). Pass `limit`, `showMoreLabel` / `showLessLabel`, and an optional `onToggle` to persist the expand state.",
 			},
 		},
 	},
 	args: {
 		children: (
 			<SidebarNavigation.Sidebar className="yst-w-1/3">
-				<SidebarNavigation.List>
-					<SidebarNavigation.Item>
-						<SidebarNavigation.Link href="#1">Link 1</SidebarNavigation.Link>
-					</SidebarNavigation.Item>
-					<SidebarNavigation.Item>
-						<SidebarNavigation.Link href="#2">Link 2</SidebarNavigation.Link>
-					</SidebarNavigation.Item>
-					<SidebarNavigation.Divider className="yst-my-2" />
-					<SidebarNavigation.Item>
-						<SidebarNavigation.Link href="#3">Link 3</SidebarNavigation.Link>
-					</SidebarNavigation.Item>
-					<SidebarNavigation.Divider className="yst-my-2">
-						<Button variant="secondary" size="small">Show 3 more</Button>
-					</SidebarNavigation.Divider>
-				</SidebarNavigation.List>
+				<SidebarNavigation.MenuItemWithLimiter
+					id="menuitemwithlimiter"
+					icon={ NewspaperIcon }
+					label="MenuItem with limiter"
+					defaultOpen={ true }
+					limit={ 2 }
+					buttonId="menuitemwithlimiter-more"
+					showMoreLabel="Show 2 more"
+					showLessLabel="Show less"
+				>
+					<SidebarNavigation.SubmenuItem to="#1" label="SubmenuItem 1" />
+					<SidebarNavigation.SubmenuItem to="#2" label="SubmenuItem 2" />
+					<SidebarNavigation.SubmenuItem to="#3" label="SubmenuItem 3" />
+					<SidebarNavigation.SubmenuItem to="#4" label="SubmenuItem 4" />
+				</SidebarNavigation.MenuItemWithLimiter>
 			</SidebarNavigation.Sidebar>
 		),
 	},
@@ -408,7 +408,7 @@ export default {
 	parameters: {
 		docs: {
 			description: {
-				component: "A sidebar navigation component. Contains the subcomponents `Sidebar`, `Mobile`, `MenuItem`, `SubmenuItem` and `Divider` and contains the hook `useNavigationContext`.",
+				component: "A sidebar navigation component. Contains the subcomponents `Sidebar`, `Mobile`, `MenuItem`, `SubmenuItem` and `MenuItemWithLimiter` and contains the hook `useNavigationContext`.",
 			},
 			page: () => <InteractiveDocsPage
 				stories={ [
@@ -417,7 +417,7 @@ export default {
 					Mobile,
 					UsingBuildingBlocks,
 					NotUsingBuildingBlocks,
-					Divider,
+					MenuItemWithLimiter,
 					NavigationContext,
 				] }
 			/>,
