@@ -105,5 +105,3 @@ export const MenuItemWithLimiter = ( {
 };
 
 MenuItemWithLimiter.displayName = "SidebarNavigation.MenuItemWithLimiter";
-
-export default MenuItemWithLimiter;
