@@ -77,6 +77,7 @@ SidebarNavigation.MenuItem.displayName = "SidebarNavigation.MenuItem";
 SidebarNavigation.SubmenuItem = SubmenuItem;
 SidebarNavigation.SubmenuItem.displayName = "SidebarNavigation.SubmenuItem";
 SidebarNavigation.MenuItemWithLimiter = MenuItemWithLimiter;
+SidebarNavigation.MenuItemWithLimiter.displayName = "SidebarNavigation.MenuItemWithLimiter";
 
 // "V2" building blocks.
 SidebarNavigation.List = List;
