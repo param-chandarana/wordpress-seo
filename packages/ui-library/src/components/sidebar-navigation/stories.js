@@ -321,7 +321,7 @@ export const MenuItemWithLimiter = {
 	parameters: {
 		docs: {
 			description: {
-				story: "The subcomponent `SidebarNavigation.MenuItemWithLimiter` is a `MenuItem` with a built-in `ChildrenLimiter` and a show-more/less toggle (a pill centered on a `Divider`). Pass `limit`, `showMoreLabel` / `showLessLabel`, and an optional `onToggle` to persist the expand state.",
+				story: "The subcomponent `SidebarNavigation.MenuItemWithLimiter` is a `MenuItem` with a built-in `ChildrenLimiter` and a show-more/less toggle (a pill centered on a `Divider`). Pass `limit`, `showMoreLabel` / `showLessLabel` and `buttonId` to persist the expand state.",
 			},
 		},
 	},
