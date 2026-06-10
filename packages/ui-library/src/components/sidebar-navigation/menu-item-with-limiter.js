@@ -36,7 +36,7 @@ const LimiterToggle = ( { show, toggle, ariaProps, buttonId, showMoreLabel, show
 		<Divider className="yst-mt-2">
 			<button
 				type="button"
-				className="yst-flex yst-items-center yst-gap-1.5 yst-px-2.5 yst-py-1 yst-text-xs yst-font-medium yst-text-slate-700 yst-bg-slate-50 yst-rounded-full yst-border yst-border-slate-300 hover:yst-bg-white hover:yst-text-slate-800 focus:yst-outline-none focus:yst-ring-2 focus:yst-ring-primary-500 focus:yst-ring-offset-2"
+				className="yst-sidebar-navigation__limiter-toggle"
 				onClick={ handleClick }
 				{ ...ariaProps }
 			>
