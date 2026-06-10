@@ -31,9 +31,9 @@ const Divider = forwardRef( ( {
 	// With content the line is split so the children sit centered between the two halves.
 	return (
 		<div ref={ ref } className={ classNames( "yst-flex yst-items-center", className ) } { ...props }>
-			<HorizontalLine aria-hidden="true" className="yst-grow" />
+			<HorizontalLine className="yst-grow" />
 			{ children }
-			<HorizontalLine aria-hidden="true" className="yst-grow" />
+			<HorizontalLine className="yst-grow" />
 		</div>
 	);
 } );
