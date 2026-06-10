@@ -66,7 +66,7 @@ function getExcerpt( content, onlyExcerpt = false ) {
  * @param {Object} editorDocument The current document.
  * @returns {Object} The editor data.
  */
-function getEditorData( editorDocument ) {
+export const getEditorData = ( editorDocument ) => {
 	const tree = getDocumentTree( editorDocument );
 	enrichImageNodes( tree, editorDocument );
 	const content = walkAtomicTree( tree );
@@ -83,6 +83,4 @@ function getEditorData( editorDocument ) {
 		contentImage: contentImageUrl,
 		status: elementor.settings.page.model.get( "post_status" ),
 	};
-}
-
-export { getEditorData };
+};
