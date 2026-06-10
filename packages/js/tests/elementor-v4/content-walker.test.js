@@ -252,6 +252,23 @@ describe( "content-walker per-widget extractors", () => {
 		} );
 	} );
 
+	describe( "text-editor", () => {
+		it( "passes the raw HTML string through unchanged, preserving anchor tags", () => {
+			const node = {
+				widgetType: "text-editor",
+				settings: { editor: "<p>Visit <a href=\"https://example.com\">example.com</a> for more.</p>" },
+			};
+			expect( EXTRACTORS[ "text-editor" ]( node ) ).toBe(
+				"<p>Visit <a href=\"https://example.com\">example.com</a> for more.</p>"
+			);
+		} );
+
+		it( "returns empty when editor content is absent or empty", () => {
+			expect( EXTRACTORS[ "text-editor" ]( { widgetType: "text-editor", settings: {} } ) ).toBe( "" );
+			expect( EXTRACTORS[ "text-editor" ]( { widgetType: "text-editor", settings: { editor: "" } } ) ).toBe( "" );
+		} );
+	} );
+
 	describe( "e-tab", () => {
 		it( "emits the tab label as a button so it is part of analysable text", () => {
 			const node = {

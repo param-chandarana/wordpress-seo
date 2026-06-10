@@ -124,6 +124,14 @@ const EXTRACTORS = {
 		return "";
 	},
 
+	"text-editor": ( node ) => {
+		const content = node.settings?.editor;
+		if ( typeof content !== "string" || content === "" ) {
+			return "";
+		}
+		return content;
+	},
+
 	"e-tab": ( node ) => {
 		const text = readHtmlV3Prop( node.settings?.title );
 		if ( text === "" ) {
