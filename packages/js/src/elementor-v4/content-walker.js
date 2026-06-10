@@ -102,8 +102,9 @@ const EXTRACTORS = {
 
 	"e-image": ( node ) => {
 		// The image URL is resolved from a WP attachment ID server-side; the JSON
-		// settings only hold the ID (url: null). Use the pre-rendered htmlCache to
-		// extract src and alt — those are the values that matter for SEO analysis.
+		// settings only hold the ID (url: null). htmlCache is populated either from
+		// the initial page data (on load) or filled in from the live preview DOM by
+		// initialize.js before this extractor runs.
 		const cache = typeof node.htmlCache === "string" ? node.htmlCache : "";
 		if ( cache ) {
 			const fragment = new DOMParser().parseFromString( cache, "text/html" );

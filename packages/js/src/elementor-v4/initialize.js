@@ -5,7 +5,7 @@
  */
 
 import { dispatch, select } from "@wordpress/data";
-import { debounce, get } from "lodash";
+import { debounce, get, noop } from "lodash";
 import { Paper } from "yoastseo";
 import { refreshDelay } from "../analysis/constants";
 import firstImageUrlInContent from "../helpers/firstImageUrlInContent";
@@ -61,6 +61,38 @@ function getDocumentTree( currentDocument ) {
 }
 
 /**
+ * Walks the JSON tree and fills in `htmlCache` for any `e-image` node that is
+ * missing it, reading the rendered `<img>` outerHTML from the live preview DOM.
+ *
+ * Elementor V4 only populates `htmlCache` in the model snapshot on initial page
+ * load (from server-rendered data). When a new image widget is added mid-session,
+ * the async server render updates the preview DOM but never writes back to the
+ * model snapshot. Reading from the preview DOM keeps image detection current
+ * without waiting for a full page reload.
+ *
+ * @param {Object[]} nodes           The document tree nodes (from model.toJSON()).
+ * @param {Object}   editorDocument  The current Elementor document.
+ * @returns {void}
+ */
+function enrichImageNodes( nodes, editorDocument ) {
+	if ( ! Array.isArray( nodes ) ) {
+		return;
+	}
+	nodes.forEach( ( node ) => {
+		if ( ! node || typeof node !== "object" ) {
+			return;
+		}
+		if ( node.widgetType === "e-image" && typeof node.htmlCache !== "string" ) {
+			const imgEl = editorDocument.$element?.find( `[data-id="${ node.id }"]` )?.find( "img" ).get( 0 );
+			if ( imgEl ) {
+				node.htmlCache = imgEl.outerHTML;
+			}
+		}
+		enrichImageNodes( node.elements, editorDocument );
+	} );
+}
+
+/**
  * Computes the SEO excerpt with a content fallback.
  *
  * @param {string}  content     The full extracted content HTML.
@@ -89,7 +121,9 @@ function getExcerpt( content, onlyExcerpt = false ) {
  * @returns {Object} The editor data.
  */
 function getEditorData( editorDocument ) {
-	const content = walkAtomicTree( getDocumentTree( editorDocument ) );
+	const tree = getDocumentTree( editorDocument );
+	enrichImageNodes( tree, editorDocument );
+	const content = walkAtomicTree( tree );
 	const featuredImageUrl = get( elementor.settings.page.model.get( "post_featured_image" ), "url", "" );
 	const contentImageUrl = firstImageUrlInContent( content );
 
@@ -186,6 +220,20 @@ const debouncedHandleEditorChange = debounce( handleEditorChange, refreshDelay )
  * @returns {void}
  */
 function initializeElementorV4() {
+	let stopObserver = noop;
+
+	registerElementorUIHookAfter(
+		"editor/documents/attach-preview",
+		"yoast-seo/v4/content-walker/start-observer",
+		() => {
+			stopObserver();
+			const observer = new MutationObserver( debouncedHandleEditorChange );
+			observer.observe( document, { attributes: true, childList: true, subtree: true, characterData: true } );
+			stopObserver = () => observer.disconnect();
+		},
+		isFormIdEqualToDocumentId
+	);
+
 	registerElementorUIHookBefore(
 		"panel/editor/open",
 		"yoast-seo/v4/marks/reset-on-edit",
@@ -204,6 +252,8 @@ function initializeElementorV4() {
 		"editor/documents/close",
 		"yoast-seo/v4/content-walker/stop",
 		() => {
+			stopObserver();
+			stopObserver = noop;
 			debouncedHandleEditorChange.cancel();
 		},
 		( { id } ) => isFormId( id )
