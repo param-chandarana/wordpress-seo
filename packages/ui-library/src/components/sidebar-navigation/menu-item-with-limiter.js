@@ -1,5 +1,6 @@
 import ChevronDownIcon from "@heroicons/react/solid/ChevronDownIcon";
 import classNames from "classnames";
+import PropTypes from "prop-types";
 import React, { useCallback } from "react";
 import { useSvgAria } from "../../hooks";
 import Divider from "../../elements/divider";
@@ -48,6 +49,15 @@ const LimiterToggle = ( { show, toggle, ariaProps, buttonId, showMoreLabel, show
 			</button>
 		</Divider>
 	);
+};
+
+LimiterToggle.propTypes = {
+	show: PropTypes.bool.isRequired,
+	toggle: PropTypes.func.isRequired,
+	ariaProps: PropTypes.object.isRequired,
+	buttonId: PropTypes.string.isRequired,
+	showMoreLabel: PropTypes.node.isRequired,
+	showLessLabel: PropTypes.node.isRequired,
 };
 
 /**
@@ -103,3 +113,16 @@ export const MenuItemWithLimiter = ( {
 		</MenuItem>
 	);
 };
+
+MenuItemWithLimiter.propTypes = {
+	id: PropTypes.string.isRequired,
+	icon: PropTypes.elementType,
+	label: PropTypes.node.isRequired,
+	defaultOpen: PropTypes.bool,
+	limit: PropTypes.number.isRequired,
+	buttonId: PropTypes.string.isRequired,
+	showMoreLabel: PropTypes.node.isRequired,
+	showLessLabel: PropTypes.node.isRequired,
+	children: PropTypes.node.isRequired,
+};
+
