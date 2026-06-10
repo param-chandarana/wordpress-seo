@@ -1,5 +1,4 @@
 import classNames from "classnames";
-import PropTypes from "prop-types";
 import React, { forwardRef } from "react";
 
 /**
@@ -38,11 +37,6 @@ const Divider = forwardRef( ( {
 		</div>
 	);
 } );
-
-Divider.propTypes = {
-	children: PropTypes.node,
-	className: PropTypes.string,
-};
 
 Divider.displayName = "Divider";
 
