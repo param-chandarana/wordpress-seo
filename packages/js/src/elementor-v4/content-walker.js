@@ -101,17 +101,27 @@ const EXTRACTORS = {
 	},
 
 	"e-image": ( node ) => {
-		const alt = readNestedStringProp( node.settings?.image, "alt" );
-		const src = readNestedStringProp( node.settings?.image, "src" );
-		if ( alt === "" && src === "" ) {
-			return "";
+		// The image URL is resolved from a WP attachment ID server-side; the JSON
+		// settings only hold the ID (url: null). Use the pre-rendered htmlCache to
+		// extract src and alt — those are the values that matter for SEO analysis.
+		const cache = typeof node.htmlCache === "string" ? node.htmlCache : "";
+		if ( cache ) {
+			const fragment = new DOMParser().parseFromString( cache, "text/html" );
+			const img = fragment.querySelector( "img" );
+			if ( img ) {
+				const src = img.getAttribute( "src" ) ?? "";
+				const alt = img.getAttribute( "alt" ) ?? "";
+				if ( src !== "" || alt !== "" ) {
+					const attrs = [];
+					if ( src !== "" ) {
+						attrs.push( `src="${ escapeAttribute( src ) }"` );
+					}
+					attrs.push( `alt="${ escapeAttribute( alt ) }"` );
+					return `<img ${ attrs.join( " " ) }>`;
+				}
+			}
 		}
-		const attrs = [];
-		if ( src !== "" ) {
-			attrs.push( `src="${ escapeAttribute( src ) }"` );
-		}
-		attrs.push( `alt="${ escapeAttribute( alt ) }"` );
-		return `<img ${ attrs.join( " " ) }>`;
+		return "";
 	},
 
 	"e-tab": ( node ) => {

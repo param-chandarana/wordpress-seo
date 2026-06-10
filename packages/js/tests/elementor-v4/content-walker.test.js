@@ -189,30 +189,65 @@ describe( "content-walker per-widget extractors", () => {
 	} );
 
 	describe( "e-image", () => {
-		it( "emits an img with src and alt for SEO analysis", () => {
+		// In Elementor V4 the image URL is resolved from a WP attachment ID server-side;
+		// the JSON settings hold only the ID and url: null. The pre-rendered htmlCache is
+		// the only client-side source of the resolved src and alt values.
+		it( "extracts src and alt from htmlCache (real V4 shape — url is null in settings)", () => {
 			const node = {
 				widgetType: "e-image",
 				settings: {
-					image: { $$type: "image", value: { src: "hero.jpg", alt: "Hero banner showing the product" } },
+					image: {
+						$$type: "image",
+						value: {
+							src: { $$type: "image-src", value: { id: { $$type: "image-attachment-id", value: 9 }, url: null } },
+						},
+					},
 				},
+				htmlCache: "<img class=\"e-image-base\" data-interaction-id=\"abc\" src=\"http://example.com/photo.jpg\" width=\"600\" height=\"421\" alt=\"A descriptive alt text\"/>",
+				elements: [],
 			};
 			expect( EXTRACTORS[ "e-image" ]( node ) ).toBe(
-				"<img src=\"hero.jpg\" alt=\"Hero banner showing the product\">"
+				"<img src=\"http://example.com/photo.jpg\" alt=\"A descriptive alt text\">"
 			);
 		} );
 
-		it( "emits an empty-alt img when alt is missing (still flagged by Yoast)", () => {
+		it( "emits an empty-alt img when alt is missing in htmlCache (still flagged by Yoast)", () => {
 			const node = {
 				widgetType: "e-image",
-				settings: { image: { $$type: "image", value: { src: "decor.png" } } },
+				settings: {},
+				htmlCache: "<img class=\"e-image-base\" src=\"http://example.com/decor.png\" alt=\"\"/>",
+				elements: [],
 			};
-			expect( EXTRACTORS[ "e-image" ]( node ) ).toBe( "<img src=\"decor.png\" alt=\"\">" );
+			expect( EXTRACTORS[ "e-image" ]( node ) ).toBe( "<img src=\"http://example.com/decor.png\" alt=\"\">" );
 		} );
 
-		it( "returns empty when both src and alt are missing", () => {
+		it( "escapes special characters in src and alt read from htmlCache", () => {
+			const node = {
+				widgetType: "e-image",
+				settings: {},
+				htmlCache: "<img src=\"http://example.com/?a=1&b=2\" alt=\"Quote &quot;test&quot;\"/>",
+				elements: [],
+			};
+			// DOMParser already unescapes HTML entities; escapeAttribute re-escapes them for safe output.
+			expect( EXTRACTORS[ "e-image" ]( node ) ).toBe(
+				"<img src=\"http://example.com/?a=1&amp;b=2\" alt=\"Quote &quot;test&quot;\">"
+			);
+		} );
+
+		it( "returns empty when htmlCache is absent and settings carry no usable data", () => {
 			expect( EXTRACTORS[ "e-image" ]( {
 				widgetType: "e-image",
-				settings: { image: { $$type: "image", value: {} } },
+				settings: {},
+				elements: [],
+			} ) ).toBe( "" );
+		} );
+
+		it( "returns empty when htmlCache contains no img tag", () => {
+			expect( EXTRACTORS[ "e-image" ]( {
+				widgetType: "e-image",
+				settings: {},
+				htmlCache: "<div>not an image</div>",
+				elements: [],
 			} ) ).toBe( "" );
 		} );
 	} );
