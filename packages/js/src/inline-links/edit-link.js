@@ -30,8 +30,9 @@ export const link = {
 	className: null,
 	attributes: {
 		url: "href",
-		type: "type",
-		id: "id",
+		type: "data-type",
+		id: "data-id",
+		_id: "id",
 		target: "target",
 		rel: "rel",
 		"class": "class",
