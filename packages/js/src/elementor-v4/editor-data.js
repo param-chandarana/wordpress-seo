@@ -7,6 +7,17 @@ import { walkAtomicTree } from "./content-walker";
 import { getDocumentTree } from "./document-tree";
 
 /**
+ * Finds the rendered `<img>` element for a node in the live preview DOM.
+ *
+ * @param {Object} node           A document tree node with an `id`.
+ * @param {Object} editorDocument The current Elementor document.
+ * @returns {HTMLImageElement|undefined} The img element, or undefined if not found.
+ */
+function getPreviewImgElement( node, editorDocument ) {
+	return editorDocument.$element?.find( `[data-id="${ node.id }"]` )?.find( "img" ).get( 0 );
+}
+
+/**
  * Walks the JSON tree and fills in `htmlCache` for any `e-image` node that is
  * missing it, reading the rendered `<img>` outerHTML from the live preview DOM.
  *
@@ -29,7 +40,7 @@ function enrichImageNodes( nodes, editorDocument ) {
 			return;
 		}
 		if ( node.widgetType === "e-image" && typeof node.htmlCache !== "string" ) {
-			const imgEl = editorDocument.$element?.find( `[data-id="${ node.id }"]` )?.find( "img" ).get( 0 );
+			const imgEl = getPreviewImgElement( node, editorDocument );
 			if ( imgEl ) {
 				node.htmlCache = imgEl.outerHTML;
 			}

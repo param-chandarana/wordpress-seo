@@ -13,6 +13,10 @@ jest.mock( "@wordpress/data", () => ( {
 
 jest.mock( "yoastseo", () => ( {
 	Paper: class {
+		/**
+		 * @param {string} text The paper text.
+		 * @param {Object} attributes The paper attributes.
+		 */
 		constructor( text, attributes ) {
 			this.text = text;
 			this.attributes = attributes;

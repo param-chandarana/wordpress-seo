@@ -25,11 +25,18 @@ global.elementor = {
 	},
 };
 
+const PAGE_SETTING_KEYS = {
+	TITLE: "post_title",
+	EXCERPT: "post_excerpt",
+	STATUS: "post_status",
+	FEATURED_IMAGE: "post_featured_image",
+};
+
 const defaultSettings = {
-	post_title: "My Post",
-	post_excerpt: "",
-	post_status: "draft",
-	post_featured_image: null,
+	[ PAGE_SETTING_KEYS.TITLE ]: "My Post",
+	[ PAGE_SETTING_KEYS.EXCERPT ]: "",
+	[ PAGE_SETTING_KEYS.STATUS ]: "draft",
+	[ PAGE_SETTING_KEYS.FEATURED_IMAGE ]: null,
 };
 
 const makeEditorDocument = ( $elementOverride = null ) => ( {
@@ -65,10 +72,10 @@ describe( "getEditorData", () => {
 
 	it( "returns title and status from elementor page settings", () => {
 		mockPageModelGet.mockImplementation( ( key ) => ( {
-			post_title: "SEO Title",
-			post_status: "publish",
-			post_excerpt: "",
-			post_featured_image: null,
+			[ PAGE_SETTING_KEYS.TITLE ]: "SEO Title",
+			[ PAGE_SETTING_KEYS.STATUS ]: "publish",
+			[ PAGE_SETTING_KEYS.EXCERPT ]: "",
+			[ PAGE_SETTING_KEYS.FEATURED_IMAGE ]: null,
 		} )[ key ] ?? null );
 
 		const result = getEditorData( makeEditorDocument() );
@@ -78,7 +85,7 @@ describe( "getEditorData", () => {
 	} );
 
 	it( "uses post_excerpt when set", () => {
-		mockPageModelGet.mockImplementation( ( key ) => key === "post_excerpt" ? "Hand-written excerpt." : null );
+		mockPageModelGet.mockImplementation( ( key ) => key === PAGE_SETTING_KEYS.EXCERPT ? "Hand-written excerpt." : null );
 
 		const result = getEditorData( makeEditorDocument() );
 
@@ -111,14 +118,14 @@ describe( "getEditorData", () => {
 		const resultNoExcerpt = getEditorData( makeEditorDocument() );
 		expect( resultNoExcerpt.excerptOnly ).toBe( "" );
 
-		mockPageModelGet.mockImplementation( ( key ) => key === "post_excerpt" ? "My excerpt." : null );
+		mockPageModelGet.mockImplementation( ( key ) => key === PAGE_SETTING_KEYS.EXCERPT ? "My excerpt." : null );
 		const resultWithExcerpt = getEditorData( makeEditorDocument() );
 		expect( resultWithExcerpt.excerptOnly ).toBe( "My excerpt." );
 	} );
 
 	it( "prefers featuredImageUrl over contentImageUrl for imageUrl", () => {
 		mockPageModelGet.mockImplementation( ( key ) => {
-			if ( key === "post_featured_image" ) {
+			if ( key === PAGE_SETTING_KEYS.FEATURED_IMAGE ) {
 				return { url: "https://example.com/featured.jpg" };
 			}
 			return null;

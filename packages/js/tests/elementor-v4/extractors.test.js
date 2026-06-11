@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { __testables__ } from "../../src/elementor-v4/content-walker";
-import { stringProp, htmlV3Prop, headingNode, paragraphNode } from "./__fixtures__/nodes";
+import { htmlV3Prop, headingNode, paragraphNode } from "./__fixtures__/nodes";
 
 const { EXTRACTORS } = __testables__;
 

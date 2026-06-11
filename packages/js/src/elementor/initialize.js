@@ -26,6 +26,19 @@ function isElementorV4AtomicActive() {
 }
 
 /**
+ * Initializes the appropriate introduction component based on feature flags.
+ *
+ * @returns {void}
+ */
+function initIntroductionComponent() {
+	if ( window.wpseoScriptData.isAlwaysIntroductionV2 === "1" || window.elementorFrontend.config.experimentalFeatures.editor_v2 ) {
+		initializeIntroductionEditorV2();
+		return;
+	}
+	initializeIntroduction();
+}
+
+/**
  * Initializes Yoast SEO for Elementor.
  *
  * @returns {void}
@@ -77,11 +90,7 @@ function initialize() {
 	initHighlightFocusKeyphraseForms( window.YoastSEO.analysis.worker.runResearch );
 
 	// Initialize the introduction.
-	if ( window.wpseoScriptData.isAlwaysIntroductionV2 === "1" || window.elementorFrontend.config.experimentalFeatures.editor_v2 ) {
-		initializeIntroductionEditorV2();
-	} else {
-		initializeIntroduction();
-	}
+	initIntroductionComponent();
 	// Initialize the editor integration.
 	initializeElementEditorIntegration();
 

@@ -1,3 +1,4 @@
+/* global elementor */
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 // @wordpress/data is a third-party module — its factory is called lazily after variable

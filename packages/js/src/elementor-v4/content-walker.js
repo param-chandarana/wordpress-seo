@@ -64,6 +64,27 @@ const escapeAttribute = ( value ) => String( value )
 	.replace( /</g, "&lt;" )
 	.replace( />/g, "&gt;" );
 
+/**
+ * Builds an `<img>` tag string from a parsed img element, or returns empty if
+ * neither src nor alt is present.
+ *
+ * @param {HTMLImageElement} img The parsed img element.
+ * @returns {string} The img tag string, or empty.
+ */
+function imgElementToHtml( img ) {
+	const src = img.getAttribute( "src" ) ?? "";
+	const alt = img.getAttribute( "alt" ) ?? "";
+	if ( src === "" && alt === "" ) {
+		return "";
+	}
+	const attrs = [];
+	if ( src !== "" ) {
+		attrs.push( `src="${ escapeAttribute( src ) }"` );
+	}
+	attrs.push( `alt="${ escapeAttribute( alt ) }"` );
+	return `<img ${ attrs.join( " " ) }>`;
+}
+
 const HEADING_TAGS = new Set( [ "h1", "h2", "h3", "h4", "h5", "h6" ] );
 const PARAGRAPH_TAGS = new Set( [ "p", "span" ] );
 
@@ -106,23 +127,12 @@ const EXTRACTORS = {
 		// the initial page data (on load) or filled in from the live preview DOM by
 		// initialize.js before this extractor runs.
 		const cache = typeof node.htmlCache === "string" ? node.htmlCache : "";
-		if ( cache ) {
-			const fragment = new DOMParser().parseFromString( cache, "text/html" );
-			const img = fragment.querySelector( "img" );
-			if ( img ) {
-				const src = img.getAttribute( "src" ) ?? "";
-				const alt = img.getAttribute( "alt" ) ?? "";
-				if ( src !== "" || alt !== "" ) {
-					const attrs = [];
-					if ( src !== "" ) {
-						attrs.push( `src="${ escapeAttribute( src ) }"` );
-					}
-					attrs.push( `alt="${ escapeAttribute( alt ) }"` );
-					return `<img ${ attrs.join( " " ) }>`;
-				}
-			}
+		if ( ! cache ) {
+			return "";
 		}
-		return "";
+		const fragment = new DOMParser().parseFromString( cache, "text/html" );
+		const img = fragment.querySelector( "img" );
+		return img ? imgElementToHtml( img ) : "";
 	},
 
 	"text-editor": ( node ) => {
