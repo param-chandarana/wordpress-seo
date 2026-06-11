@@ -40,6 +40,8 @@ function enrichImageNodes( nodes, editorDocument ) {
 			return;
 		}
 		if ( node.widgetType === "e-image" && typeof node.htmlCache !== "string" ) {
+			// Mutates the node in-place; safe because htmlCache is only written once
+			// (the guard above skips nodes that already have it).
 			const imgEl = getPreviewImgElement( node, editorDocument );
 			if ( imgEl ) {
 				node.htmlCache = imgEl.outerHTML;

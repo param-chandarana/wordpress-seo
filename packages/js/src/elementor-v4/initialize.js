@@ -71,6 +71,7 @@ function initializeElementorV4() {
 
 jQuery( window ).on( "elementor:init", () => {
 	window.elementor.on( "panel:init", () => {
+		// Defer to let Elementor finish setting up the panel before we register hooks.
 		setTimeout( initializeElementorV4 );
 	} );
 } );

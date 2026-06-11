@@ -9,7 +9,6 @@ const editorData = {
 	content: "",
 	title: "",
 	excerpt: "",
-	slug: "",
 	imageUrl: "",
 	featuredImage: "",
 	contentImage: "",
