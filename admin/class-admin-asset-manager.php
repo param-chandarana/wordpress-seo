@@ -670,10 +670,6 @@ class WPSEO_Admin_Asset_Manager {
 				'src'  => 'elementor-' . $flat_version,
 			],
 			[
-				'name' => 'elementor-v4',
-				'src'  => 'elementor-v4-' . $flat_version,
-			],
-			[
 				'name' => 'tailwind',
 				'src'  => 'tailwind-' . $flat_version,
 				// Note: The RTL suffix is not added here.
