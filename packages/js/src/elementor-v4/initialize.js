@@ -24,9 +24,12 @@ function initializeElementorV4() {
 		"yoast-seo/v4/content-walker/start-observer",
 		() => {
 			stopObserver();
-			const observer = new MutationObserver( debouncedHandleEditorChange );
-			observer.observe( document, { attributes: true, childList: true, subtree: true, characterData: true } );
-			stopObserver = () => observer.disconnect();
+			elementor.channels.editor.on( "change", debouncedHandleEditorChange );
+			elementor.settings.page.model.on( "change", debouncedHandleEditorChange );
+			stopObserver = () => {
+				elementor.channels.editor.off( "change", debouncedHandleEditorChange );
+				elementor.settings.page.model.off( "change", debouncedHandleEditorChange );
+			};
 		},
 		isFormIdEqualToDocumentId
 	);

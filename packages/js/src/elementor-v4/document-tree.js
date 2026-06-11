@@ -5,12 +5,11 @@
  * @returns {Array|null} The elements array, or null if not accessible.
  */
 function getContainerElements( currentDocument ) {
-	const model = currentDocument.container?.model;
-	if ( ! model || typeof model.toJSON !== "function" ) {
+	const elements = currentDocument.container?.model?.get( "elements" );
+	if ( ! elements || typeof elements.toJSON !== "function" ) {
 		return null;
 	}
-	const json = model.toJSON();
-	return Array.isArray( json?.elements ) ? json.elements : null;
+	return elements.toJSON();
 }
 
 /**
