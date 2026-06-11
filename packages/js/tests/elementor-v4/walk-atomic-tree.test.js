@@ -1,7 +1,17 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { walkAtomicTree } from "../../src/elementor-v4/content-walker";
-import { headingNode, paragraphNode, textEditorNode, flexboxContainer } from "./__fixtures__/nodes";
+import { headingNode, paragraphNode, textEditorNode, flexboxContainer, htmlV3Prop } from "./__fixtures__/nodes";
+
+const linkProp = ( url ) => ( {
+	$$type: "link",
+	value: { destination: { $$type: "url", value: url }, isTargetBlank: null },
+} );
+
+const withLink = ( node, url ) => ( {
+	...node,
+	settings: { ...node.settings, link: linkProp( url ) },
+} );
 
 describe( walkAtomicTree, () => {
 	it( "returns empty for null, undefined, or non-array input", () => {
@@ -117,5 +127,45 @@ describe( walkAtomicTree, () => {
 		];
 
 		expect( walkAtomicTree( tree ) ).toBe( "<h1>Survivor</h1>" );
+	} );
+} );
+
+describe( "widget-level link wrapping", () => {
+	it( "wraps paragraph output in an anchor when the widget has a link", () => {
+		expect( walkAtomicTree( [ withLink( paragraphNode( "Click here." ), "https://example.com/page/" ) ] ) ).toBe(
+			"<a href=\"https://example.com/page/\"><p>Click here.</p></a>"
+		);
+	} );
+
+	it( "wraps heading output in an anchor when the widget has a link", () => {
+		expect( walkAtomicTree( [ withLink( headingNode( "Our story", "h2" ), "/about/" ) ] ) ).toBe(
+			"<a href=\"/about/\"><h2>Our story</h2></a>"
+		);
+	} );
+
+	it( "escapes special characters in the widget link URL", () => {
+		expect( walkAtomicTree( [ withLink( paragraphNode( "Search" ), "https://example.com/?q=a&b=c" ) ] ) ).toBe(
+			"<a href=\"https://example.com/?q=a&amp;b=c\"><p>Search</p></a>"
+		);
+	} );
+
+	it( "does not wrap when the widget has no link", () => {
+		expect( walkAtomicTree( [ paragraphNode( "No link here." ) ] ) ).toBe( "<p>No link here.</p>" );
+	} );
+
+	it( "does not double-wrap e-button which handles its own link via href", () => {
+		const buttonNode = {
+			id: "btn-1",
+			elType: "widget",
+			widgetType: "e-button",
+			settings: {
+				text: htmlV3Prop( "Submit" ),
+				link: { $$type: "link", value: { href: "https://example.com/" } },
+			},
+			elements: [],
+		};
+		const result = walkAtomicTree( [ buttonNode ] );
+		expect( result ).toBe( "<a href=\"https://example.com/\">Submit</a>" );
+		expect( ( result.match( /<a /g ) ?? [] ) ).toHaveLength( 1 );
 	} );
 } );

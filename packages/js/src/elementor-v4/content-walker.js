@@ -153,14 +153,29 @@ const EXTRACTORS = {
 };
 
 /**
- * Returns the HTML from the matching atomic-widget extractor, or empty string.
+ * Returns the HTML from the matching atomic-widget extractor, wrapped in an
+ * `<a>` tag when the widget itself carries a link (link.value.destination).
+ *
+ * Widget-level links use a `destination` url-prop, distinct from the `href`
+ * prop used by the e-button extractor, so buttons are never double-wrapped.
  *
  * @param {Object} node A document tree node.
  * @returns {string} The extracted HTML.
  */
 function extractWidgetHtml( node ) {
 	const extractor = EXTRACTORS[ node.widgetType ];
-	return extractor ? extractor( node ) : "";
+	if ( ! extractor ) {
+		return "";
+	}
+	const html = extractor( node );
+	if ( html === "" ) {
+		return "";
+	}
+	const href = readNestedStringProp( node.settings?.link, "destination" );
+	if ( href !== "" ) {
+		return `<a href="${ escapeAttribute( href ) }">${ html }</a>`;
+	}
+	return html;
 }
 
 /**
