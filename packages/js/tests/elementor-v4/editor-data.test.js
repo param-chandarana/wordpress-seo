@@ -41,9 +41,7 @@ const defaultSettings = {
 
 const makeEditorDocument = ( $elementOverride = null ) => ( {
 	$element: $elementOverride ?? {
-		find: jest.fn().mockReturnValue( {
-			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( null ) } ),
-		} ),
+		find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( null ) } ),
 	},
 } );
 
@@ -157,9 +155,7 @@ describe( "enrichImageNodes (via getEditorData)", () => {
 
 		const mockImgEl = { outerHTML: imgOuterHTML };
 		const $element = {
-			find: jest.fn().mockReturnValue( {
-				find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-			} ),
+			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
 		};
 
 		getEditorData( { $element } );
@@ -171,23 +167,22 @@ describe( "enrichImageNodes (via getEditorData)", () => {
 		);
 	} );
 
-	it( "does not overwrite an existing htmlCache", () => {
-		const existingCache = "<img src=\"https://example.com/existing.jpg\" alt=\"\">";
-		const imageNode = { id: "img-1", widgetType: "e-image", htmlCache: existingCache, elements: [] };
+	it( "overwrites an existing htmlCache with the live DOM value", () => {
+		const staleCache = "<img src=\"https://example.com/existing.jpg\" alt=\"old alt\">";
+		const freshOuterHTML = "<img src=\"https://example.com/existing.jpg\" alt=\"new alt\">";
+		const imageNode = { id: "img-1", widgetType: "e-image", htmlCache: staleCache, elements: [] };
 		getDocumentTree.mockReturnValue( [ imageNode ] );
 
-		const mockImgEl = { outerHTML: "<img src=\"https://example.com/new.jpg\" alt=\"\">" };
+		const mockImgEl = { outerHTML: freshOuterHTML };
 		const $element = {
-			find: jest.fn().mockReturnValue( {
-				find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-			} ),
+			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
 		};
 
 		getEditorData( { $element } );
 
 		expect( walkAtomicTree ).toHaveBeenCalledWith(
 			expect.arrayContaining( [
-				expect.objectContaining( { htmlCache: existingCache } ),
+				expect.objectContaining( { htmlCache: freshOuterHTML } ),
 			] )
 		);
 	} );
@@ -200,9 +195,7 @@ describe( "enrichImageNodes (via getEditorData)", () => {
 
 		const mockImgEl = { outerHTML: imgOuterHTML };
 		const $element = {
-			find: jest.fn().mockReturnValue( {
-				find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-			} ),
+			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
 		};
 
 		getEditorData( { $element } );
