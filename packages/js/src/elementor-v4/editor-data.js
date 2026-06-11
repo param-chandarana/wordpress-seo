@@ -8,13 +8,16 @@ import { getDocumentTree } from "./document-tree";
 
 /**
  * Finds the rendered `<img>` element for a node in the live preview DOM.
+ * In Elementor V4 the `data-interaction-id` attribute is placed directly on
+ * the `<img>` element, so we target it with a type-qualified selector.
  *
  * @param {Object} node           A document tree node with an `id`.
  * @param {Object} editorDocument The current Elementor document.
  * @returns {HTMLImageElement|undefined} The img element, or undefined if not found.
  */
 function getPreviewImgElement( node, editorDocument ) {
-	return editorDocument.$element?.find( `[data-id="${ node.id }"]` )?.find( "img" ).get( 0 );
+	// data-interaction-id is on the <img> element itself in V4, so target it directly.
+	return editorDocument.$element?.find( `img[data-interaction-id="${ node.id }"]` ).get( 0 );
 }
 
 /**
@@ -39,9 +42,10 @@ function enrichImageNodes( nodes, editorDocument ) {
 		if ( ! node || typeof node !== "object" ) {
 			return;
 		}
-		if ( node.widgetType === "e-image" && typeof node.htmlCache !== "string" ) {
-			// Mutates the node in-place; safe because htmlCache is only written once
-			// (the guard above skips nodes that already have it).
+		if ( node.widgetType === "e-image" ) {
+			// Always prefer the live DOM over the model snapshot — the image URL and
+			// alt text are resolved server-side, so htmlCache may be stale or absent
+			// when the image or its alt text changes mid-session.
 			const imgEl = getPreviewImgElement( node, editorDocument );
 			if ( imgEl ) {
 				node.htmlCache = imgEl.outerHTML;
