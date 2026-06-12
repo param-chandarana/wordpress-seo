@@ -86,7 +86,9 @@ function getExcerpt( content, onlyExcerpt = false ) {
 export const getEditorData = ( editorDocument ) => {
 	const tree = getDocumentTree( editorDocument );
 	enrichImageNodes( tree, editorDocument );
-	const content = walkAtomicTree( tree );
+	// Strip \n and \t to keep positions in sync with applyMarksElementor, which applies
+	// the same normalization to innerHTML before computing position offsets.
+	const content = walkAtomicTree( tree ).replace( /[\n\t]/g, "" );
 	const featuredImageUrl = get( elementor.settings.page.model.get( "post_featured_image" ), "url", "" );
 	const contentImageUrl = firstImageUrlInContent( content );
 
