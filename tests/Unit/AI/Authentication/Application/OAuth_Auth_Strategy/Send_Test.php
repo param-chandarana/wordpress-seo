@@ -236,6 +236,78 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	}
 
 	/**
+	 * A 401 carrying `invalid_token` only in the WWW-Authenticate challenge (no body error_code)
+	 * still clears the cached site token: the challenge is the authoritative error-code source.
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_clears_site_token_on_401_from_challenge_header(): void {
+		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					401,
+					[ 'www-authenticate' => 'Bearer realm="api", error="invalid_token"' ],
+					[ 'message' => 'token expired' ],
+				),
+			);
+		$this->myyoast_client->expects( 'clear_site_token' )->with( 'https://ai.yoa.st' )->once();
+
+		$this->expectException( Unauthorized_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+	}
+
+	/**
+	 * A 401 from a replayed DPoP proof (`invalid_dpop_proof`) keeps the cached site token: the token
+	 * is still valid, so discarding it would force a needless re-issue. The exception still propagates.
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_keeps_site_token_on_401_dpop_replay(): void {
+		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					401,
+					[ 'www-authenticate' => 'DPoP error="invalid_dpop_proof", error_description="DPoP proof replay detected"' ],
+					[ 'message' => 'replay detected' ],
+				),
+			);
+		$this->myyoast_client->shouldNotReceive( 'clear_site_token' );
+
+		$this->expectException( Unauthorized_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+	}
+
+	/**
+	 * A 401 with neither a challenge error nor a body error_code keeps the cached site token: the token
+	 * is only discarded on an explicit `invalid_token` signal.
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_keeps_site_token_on_401_without_error_code(): void {
+		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					401,
+					[],
+					[ 'message' => 'unauthorized' ],
+				),
+			);
+		$this->myyoast_client->shouldNotReceive( 'clear_site_token' );
+
+		$this->expectException( Unauthorized_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+	}
+
+	/**
 	 * 403 insufficient_scope is translated into Insufficient_Scope_Exception (sender bypasses fallback).
 	 * The cached site token is NOT cleared — it's still valid, just under-scoped.
 	 *

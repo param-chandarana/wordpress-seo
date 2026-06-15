@@ -11,6 +11,7 @@ use Yoast\WP\SEO\AI\HTTP_Request\Application\Response_Validator;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\WP_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
@@ -92,7 +93,8 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 * @throws Bad_Request_Exception               When the status doesn't match a more specific exception.
 	 * @throws Insufficient_Scope_Exception        When the response is a 403 insufficient_scope, so callers can keep consent untouched.
 	 * @throws Forbidden_Exception                 When the response is any other 403; callers revoke consent, same as the legacy path.
-	 * @throws Unauthorized_Exception              When the response is a 401 (cached site token is cleared before rethrowing).
+	 * @throws Unauthorized_Exception              When the response is a 401 (the cached site token is cleared only when the challenge reports `invalid_token`).
+	 * @throws Remote_Request_Exception            When MyYoast_Client::authenticated_request throws for any reason not covered above, including unexpected HTTP responses.
 	 */
 	public function send( Request $request, WP_User $user ): Response {
 		$resource = $this->api_client->get_resource_url();
@@ -134,9 +136,24 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 		try {
 			return $this->response_validator->assert_success( $this->to_response( $http_response ) );
 		} catch ( Unauthorized_Exception $exception ) {
-			// Stale cached site token; drop it so the next request fetches a fresh one. No in-call retry.
-			$this->logger->debug( 'OAuth send: 401 from yoast-ai; clearing cached site token before rethrowing.' );
-			$this->myyoast_client->clear_site_token( $resource );
+			$error_code = $this->error_code( $exception );
+			// Only drop the cached token when the challenge says the token itself is the problem
+			// (`invalid_token`). A replayed DPoP proof (`invalid_dpop_proof`) or any other 401 leaves
+			// a still-valid token in place — discarding it would force a needless re-issue, and the
+			// retry must come with a fresh DPoP proof, not a fresh token.
+			if ( $error_code === 'invalid_token' ) {
+				$this->logger->debug( 'OAuth send: 401 invalid_token from yoast-ai; clearing cached site token before rethrowing.' );
+				$this->myyoast_client->clear_site_token( $resource );
+			}
+			else {
+				$this->logger->warning(
+					'OAuth send: 401 from yoast-ai ({error_code}: {message}); keeping cached site token.',
+					[
+						'error_code' => $this->error_label( $error_code ),
+						'message'    => $exception->getMessage(),
+					],
+				);
+			}
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
 			if ( ! $this->is_insufficient_scope( $exception ) ) {
@@ -152,6 +169,15 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 				$exception->get_response_headers(),
 			);
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+		} catch ( Remote_Request_Exception $exception ) {
+			$this->logger->warning(
+				'OAuth send: remote request failed ({error_code}: {message}); rethrowing.',
+				[
+					'error_code' => $this->error_label( $this->error_code( $exception ) ),
+					'message'    => $exception->getMessage(),
+				],
+			);
+			throw $exception;
 		}
 	}
 
@@ -200,12 +226,63 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 * @return bool True if the response indicates missing scope.
 	 */
 	private function is_insufficient_scope( Forbidden_Exception $exception ): bool {
-		if ( \stripos( $exception->get_error_identifier(), 'insufficient_scope' ) !== false ) {
-			return true;
+		return ( $this->error_code( $exception ) === 'insufficient_scope' );
+	}
+
+	/**
+	 * Resolves the best available error code for an errored response.
+	 *
+	 * The body's `error_code` is not guaranteed to be present (the RFC 6750/9449 spec carries the
+	 * machine-readable code in the `WWW-Authenticate` challenge instead), so the challenge's `error="…"`
+	 * token is preferred and the body `error_code` is the fallback. Returns an empty string when
+	 * neither is available.
+	 *
+	 * @param Remote_Request_Exception $exception The exception to inspect.
+	 *
+	 * @return string The error code, lower-cased, or an empty string.
+	 */
+	private function error_code( Remote_Request_Exception $exception ): string {
+		$challenge_error = $this->challenge_error( $exception->get_response_headers() );
+		if ( $challenge_error !== '' ) {
+			return $challenge_error;
 		}
 
-		$www_authenticate = $this->get_header_value( $exception->get_response_headers(), 'www-authenticate' );
-		return ( $www_authenticate !== null && \stripos( $www_authenticate, 'insufficient_scope' ) !== false );
+		return \strtolower( $exception->get_error_identifier() );
+	}
+
+	/**
+	 * Returns a log-friendly label for an error code, substituting `unknown` for an empty code.
+	 *
+	 * @param string $error_code The resolved error code.
+	 *
+	 * @return string The label to log.
+	 */
+	private function error_label( string $error_code ): string {
+		return ( $error_code === '' ) ? 'unknown' : $error_code;
+	}
+
+	/**
+	 * Extracts the `error="…"` token from a `WWW-Authenticate` challenge header.
+	 *
+	 * Parses the RFC 6750 § 3 / RFC 9449 § 7.1 challenge (e.g. `Bearer error="invalid_token"`,
+	 * `DPoP error="invalid_dpop_proof"`) and returns the lower-cased code, or an empty string when no
+	 * challenge or `error` parameter is present.
+	 *
+	 * @param array<string, string|array<string>> $headers The (normalized) response headers.
+	 *
+	 * @return string The challenge error code, lower-cased, or an empty string.
+	 */
+	private function challenge_error( array $headers ): string {
+		$www_authenticate = $this->get_header_value( $headers, 'www-authenticate' );
+		if ( $www_authenticate === null ) {
+			return '';
+		}
+
+		if ( \preg_match( '/error\s*=\s*"([^"]*)"/i', $www_authenticate, $matches ) === 1 ) {
+			return \strtolower( $matches[1] );
+		}
+
+		return '';
 	}
 
 	/**
