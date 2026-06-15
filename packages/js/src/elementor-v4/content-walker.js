@@ -94,7 +94,10 @@ const PARAGRAPH_TAGS = new Set( [ "p", "span" ] );
  */
 const EXCLUDED_WIDGET_TYPES = new Set( [
 	"e-button",
-	"e-rating",
+	"e-svg",
+	"e-divider",
+	"e-self-hosted-video",
+	"e-tab",
 ] );
 
 const EXTRACTORS = {
@@ -107,7 +110,6 @@ const EXTRACTORS = {
 		const tag = HEADING_TAGS.has( rawTag ) ? rawTag : "h2";
 		return `<${ tag }>${ text }</${ tag }>`;
 	},
-
 	"e-paragraph": ( node ) => {
 		const text = readHtmlV3Prop( node.settings?.paragraph );
 		if ( text === "" ) {
@@ -117,12 +119,7 @@ const EXTRACTORS = {
 		const tag = PARAGRAPH_TAGS.has( rawTag ) ? rawTag : "p";
 		return `<${ tag }>${ text }</${ tag }>`;
 	},
-
 	"e-image": ( node ) => {
-		// The image URL is resolved from a WP attachment ID server-side; the JSON
-		// settings only hold the ID (url: null). htmlCache is populated either from
-		// the initial page data (on load) or filled in from the live preview DOM by
-		// initialize.js before this extractor runs.
 		const cache = typeof node.htmlCache === "string" ? node.htmlCache : "";
 		if ( ! cache ) {
 			return "";
@@ -131,21 +128,20 @@ const EXTRACTORS = {
 		const img = fragment.querySelector( "img" );
 		return img ? imgElementToHtml( img ) : "";
 	},
-
+	// e-youtube: emit as a labelled link so outbound-link assessments can count it.
+	"e-youtube": ( node ) => {
+		const url = readStringProp( node.settings?.source );
+		if ( url === "" ) {
+			return "";
+		}
+		return `<a href="${ escapeAttribute( url ) }">YouTube video</a>`;
+	},
 	"text-editor": ( node ) => {
 		const content = node.settings?.editor;
 		if ( typeof content !== "string" || content === "" ) {
 			return "";
 		}
 		return content;
-	},
-
-	"e-tab": ( node ) => {
-		const text = readHtmlV3Prop( node.settings?.title );
-		if ( text === "" ) {
-			return "";
-		}
-		return `<button>${ text }</button>`;
 	},
 };
 
@@ -182,6 +178,11 @@ function extractWidgetHtml( node ) {
  * @returns {string} The concatenated content HTML.
  */
 export function walkAtomicTree( nodes ) {
+	// Backbone Collections (returned by model.toJSON() shallow clones) expose toJSON().
+	// Convert them to plain arrays so Array.isArray passes at every nesting level.
+	if ( typeof nodes?.toJSON === "function" ) {
+		nodes = nodes.toJSON();
+	}
 	if ( ! Array.isArray( nodes ) ) {
 		return "";
 	}

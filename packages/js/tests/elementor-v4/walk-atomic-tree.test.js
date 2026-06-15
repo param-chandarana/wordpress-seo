@@ -55,6 +55,33 @@ describe( walkAtomicTree, () => {
 		);
 	} );
 
+	it( "converts Backbone-like collections (toJSON) at any nesting level", () => {
+		// model.toJSON() does a shallow clone: nested `elements` stay as Backbone Collections
+		// that expose a toJSON() method returning a plain array. walkAtomicTree must unwrap them.
+		const backboneCollection = ( children ) => ( {
+			toJSON: () => children,
+		} );
+
+		const tree = [
+			{
+				id: "container-1",
+				elType: "container",
+				settings: {},
+				elements: backboneCollection( [
+					headingNode( "Inside Backbone container", "h2" ),
+					{
+						id: "inner",
+						elType: "container",
+						settings: {},
+						elements: backboneCollection( [ paragraphNode( "Deep paragraph." ) ] ),
+					},
+				] ),
+			},
+		];
+
+		expect( walkAtomicTree( tree ) ).toBe( "<h2>Inside Backbone container</h2><p>Deep paragraph.</p>" );
+	} );
+
 	it( "skips unknown widget types but still walks their children", () => {
 		const tree = [ {
 			id: "x",
