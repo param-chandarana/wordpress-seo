@@ -136,6 +136,28 @@ final class AI_Request_Sender_Test extends TestCase {
 	}
 
 	/**
+	 * When both strategies fail, the fallback's exception propagates (not the primary's).
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_rethrows_fallback_exception_when_both_fail(): void {
+		$this->primary->expects( 'send' )->andThrow( new Unauthorized_Exception( 'oauth-failed', 401 ) );
+		$this->fallback->expects( 'send' )->andThrow( new Forbidden_Exception( 'token-failed', 403, 'token-failed' ) );
+
+		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
+
+		try {
+			$sender->get_suggestions( $this->suggestions_parameters() );
+			$this->fail( 'Expected the fallback exception to propagate.' );
+		}
+		catch ( Forbidden_Exception $exception ) {
+			$this->assertSame( 'token-failed', $exception->get_error_identifier() );
+		}
+	}
+
+	/**
 	 * Insufficient_Scope_Exception is fallback-eligible: the sender carries no OAuth-specific
 	 * knowledge, so it falls back to the secondary strategy like any Remote_Request_Exception.
 	 *

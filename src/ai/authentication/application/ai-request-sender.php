@@ -156,11 +156,45 @@ class AI_Request_Sender implements LoggerAwareInterface {
 				throw $exception;
 			}
 			$this->logger->warning(
-				'Primary AI auth strategy failed ({error_id}); falling back to the secondary strategy.',
-				[ 'error_id' => $exception->get_error_identifier() ],
+				'Primary AI auth strategy failed ({error_id}, HTTP {status}: {message}); falling back to the secondary strategy.',
+				$this->error_context( $exception ),
 			);
-			return $this->fallback->send( $request, $user );
+
+			try {
+				$response = $this->fallback->send( $request, $user );
+			}
+			catch ( Remote_Request_Exception $fallback_exception ) {
+				$this->logger->warning(
+					'Secondary AI auth strategy also failed ({error_id}, HTTP {status}: {message}); giving up.',
+					$this->error_context( $fallback_exception ),
+				);
+				throw $fallback_exception;
+			}
+
+			$this->logger->debug( 'Secondary AI auth strategy succeeded after primary failure.' );
+			return $response;
 		}
+	}
+
+	/**
+	 * Builds the PSR-3 log context for a failed remote request, defaulting a missing error identifier
+	 * to `unknown` so the rendered message never has an empty slot.
+	 *
+	 * @param Remote_Request_Exception $exception The failed request exception.
+	 *
+	 * @return array<string, int|string> The log context: error_id, status, message.
+	 */
+	private function error_context( Remote_Request_Exception $exception ): array {
+		$error_id = $exception->get_error_identifier();
+		if ( $error_id === '' ) {
+			$error_id = 'unknown';
+		}
+
+		return [
+			'error_id' => $error_id,
+			'status'   => $exception->getCode(),
+			'message'  => $exception->getMessage(),
+		];
 	}
 
 	// phpcs:enable Squiz.Commenting.FunctionCommentThrowTag.Missing
