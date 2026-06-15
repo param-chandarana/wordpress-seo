@@ -36,37 +36,6 @@ describe( "content-walker per-widget extractors", () => {
 		} );
 	} );
 
-	describe( "e-button", () => {
-		it( "emits an anchor when a link href is present", () => {
-			const node = {
-				widgetType: "e-button",
-				settings: {
-					text: htmlV3Prop( "Get started" ),
-					link: { $$type: "link", value: { href: "https://example.com/start" } },
-				},
-			};
-			expect( EXTRACTORS[ "e-button" ]( node ) ).toBe( "<a href=\"https://example.com/start\">Get started</a>" );
-		} );
-
-		it( "emits a button when no link is present", () => {
-			const node = { widgetType: "e-button", settings: { text: htmlV3Prop( "Submit" ) } };
-			expect( EXTRACTORS[ "e-button" ]( node ) ).toBe( "<button>Submit</button>" );
-		} );
-
-		it( "escapes ampersands and quotes in the link URL", () => {
-			const node = {
-				widgetType: "e-button",
-				settings: {
-					text: htmlV3Prop( "Search" ),
-					link: { $$type: "link", value: { href: "https://example.com/?q=a&b=\"c\"" } },
-				},
-			};
-			expect( EXTRACTORS[ "e-button" ]( node ) ).toBe(
-				"<a href=\"https://example.com/?q=a&amp;b=&quot;c&quot;\">Search</a>"
-			);
-		} );
-	} );
-
 	describe( "e-image", () => {
 		// In Elementor V4 the image URL is resolved from a WP attachment ID server-side;
 		// the JSON settings hold only the ID and url: null. The pre-rendered htmlCache is

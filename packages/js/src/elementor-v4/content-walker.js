@@ -88,6 +88,15 @@ function imgElementToHtml( img ) {
 const HEADING_TAGS = new Set( [ "h1", "h2", "h3", "h4", "h5", "h6" ] );
 const PARAGRAPH_TAGS = new Set( [ "p", "span" ] );
 
+/**
+ * Widget types excluded from analysis, mirroring the Elementor filters in alwaysFilterElements.js.
+ * These widget types and their entire subtrees are skipped during tree walking.
+ */
+const EXCLUDED_WIDGET_TYPES = new Set( [
+	"e-button",
+	"e-rating",
+] );
+
 const EXTRACTORS = {
 	"e-heading": ( node ) => {
 		const text = readHtmlV3Prop( node.settings?.title );
@@ -107,18 +116,6 @@ const EXTRACTORS = {
 		const rawTag = readStringProp( node.settings?.tag );
 		const tag = PARAGRAPH_TAGS.has( rawTag ) ? rawTag : "p";
 		return `<${ tag }>${ text }</${ tag }>`;
-	},
-
-	"e-button": ( node ) => {
-		const text = readHtmlV3Prop( node.settings?.text );
-		if ( text === "" ) {
-			return "";
-		}
-		const href = readNestedStringProp( node.settings?.link, "href" );
-		if ( href !== "" ) {
-			return `<a href="${ escapeAttribute( href ) }">${ text }</a>`;
-		}
-		return `<button>${ text }</button>`;
 	},
 
 	"e-image": ( node ) => {
@@ -156,9 +153,6 @@ const EXTRACTORS = {
  * Returns the HTML from the matching atomic-widget extractor, wrapped in an
  * `<a>` tag when the widget itself carries a link (link.value.destination).
  *
- * Widget-level links use a `destination` url-prop, distinct from the `href`
- * prop used by the e-button extractor, so buttons are never double-wrapped.
- *
  * @param {Object} node A document tree node.
  * @returns {string} The extracted HTML.
  */
@@ -195,6 +189,9 @@ export function walkAtomicTree( nodes ) {
 		if ( ! node || typeof node !== "object" ) {
 			return "";
 		}
+		if ( EXCLUDED_WIDGET_TYPES.has( node.widgetType ) ) {
+			return "";
+		}
 		return extractWidgetHtml( node ) + walkAtomicTree( node.elements );
 	} ).join( "" );
 }
@@ -205,4 +202,5 @@ export const __testables__ = {
 	readNestedStringProp,
 	escapeAttribute,
 	EXTRACTORS,
+	EXCLUDED_WIDGET_TYPES,
 };

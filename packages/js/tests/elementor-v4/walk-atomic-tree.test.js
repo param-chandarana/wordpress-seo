@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { walkAtomicTree } from "../../src/elementor-v4/content-walker";
-import { headingNode, paragraphNode, textEditorNode, flexboxContainer, htmlV3Prop } from "./__fixtures__/nodes";
+import { headingNode, paragraphNode, textEditorNode, flexboxContainer } from "./__fixtures__/nodes";
 
 const linkProp = ( url ) => ( {
 	$$type: "link",
@@ -152,20 +152,48 @@ describe( "widget-level link wrapping", () => {
 	it( "does not wrap when the widget has no link", () => {
 		expect( walkAtomicTree( [ paragraphNode( "No link here." ) ] ) ).toBe( "<p>No link here.</p>" );
 	} );
+} );
 
-	it( "does not double-wrap e-button which handles its own link via href", () => {
+describe( "excluded widget types", () => {
+	it( "excludes e-button from analysis, matching the classic elementor-button-wrapper filter", () => {
 		const buttonNode = {
 			id: "btn-1",
 			elType: "widget",
 			widgetType: "e-button",
-			settings: {
-				text: htmlV3Prop( "Submit" ),
-				link: { $$type: "link", value: { href: "https://example.com/" } },
-			},
+			settings: { text: { $$type: "html-v3", value: { content: { $$type: "string", value: "Buy now" }, children: [] } } },
 			elements: [],
 		};
-		const result = walkAtomicTree( [ buttonNode ] );
-		expect( result ).toBe( "<a href=\"https://example.com/\">Submit</a>" );
-		expect( ( result.match( /<a /g ) ?? [] ) ).toHaveLength( 1 );
+		expect( walkAtomicTree( [ buttonNode ] ) ).toBe( "" );
+	} );
+
+	it( "excludes e-rating from analysis, matching the classic e-rating filter", () => {
+		const ratingNode = {
+			id: "rat-1",
+			elType: "widget",
+			widgetType: "e-rating",
+			settings: {},
+			elements: [],
+		};
+		expect( walkAtomicTree( [ ratingNode ] ) ).toBe( "" );
+	} );
+
+	it( "does not walk children of an excluded widget", () => {
+		const buttonWithChild = {
+			id: "btn-2",
+			elType: "widget",
+			widgetType: "e-button",
+			settings: {},
+			elements: [ headingNode( "Should not appear", "h2" ) ],
+		};
+		expect( walkAtomicTree( [ buttonWithChild ] ) ).toBe( "" );
+	} );
+
+	it( "still processes siblings of excluded widgets", () => {
+		const tree = [
+			headingNode( "Before", "h1" ),
+			{ id: "rat-2", elType: "widget", widgetType: "e-rating", settings: {}, elements: [] },
+			paragraphNode( "After." ),
+		];
+		expect( walkAtomicTree( tree ) ).toBe( "<h1>Before</h1><p>After.</p>" );
 	} );
 } );
