@@ -9,7 +9,11 @@ import { refreshDelay } from "../analysis/constants";
 import { registerElementorUIHookAfter, registerElementorUIHookBefore } from "../elementor/helpers/hooks";
 import { isFormId, isFormIdEqualToDocumentId } from "../elementor/helpers/is-form-id";
 import { handleEditorChange, debouncedHandleEditorChange } from "./change-handler";
-import { resetMarks } from "./marks";
+import { resetMarks, getWidgetMap } from "./marks";
+
+// Expose V4 utilities so premium's mark applicator can locate widgets by ID
+// without re-implementing the content-walker tree traversal.
+window.yoastElementorV4 = { getWidgetMap };
 
 /**
  * Initialises the content watcher.

@@ -89,6 +89,18 @@ const HEADING_TAGS = new Set( [ "h1", "h2", "h3", "h4", "h5", "h6" ] );
 const PARAGRAPH_TAGS = new Set( [ "p", "span" ] );
 
 /**
+ * Converts a Backbone Collection to a plain array by calling its toJSON() method.
+ * model.toJSON() does a shallow clone so nested elements remain as Backbone Collections;
+ * both walkers call this at every level so Array.isArray always passes.
+ *
+ * @param {*} nodes The value to normalise.
+ * @returns {*} A plain array if nodes had toJSON(), otherwise the original value unchanged.
+ */
+function toPlainNodes( nodes ) {
+	return typeof nodes?.toJSON === "function" ? nodes.toJSON() : nodes;
+}
+
+/**
  * Widget types excluded from analysis, mirroring the Elementor filters in alwaysFilterElements.js.
  * These widget types and their entire subtrees are skipped during tree walking.
  */
@@ -99,6 +111,16 @@ const EXCLUDED_WIDGET_TYPES = new Set( [
 	"e-self-hosted-video",
 	"e-tab",
 ] );
+
+/**
+ * Returns true when a tree node should be skipped entirely (invalid shape or excluded widget type).
+ *
+ * @param {*} node A candidate node from the document tree.
+ * @returns {boolean}
+ */
+function shouldSkipNode( node ) {
+	return ! node || typeof node !== "object" || EXCLUDED_WIDGET_TYPES.has( node.widgetType );
+}
 
 const EXTRACTORS = {
 	"e-heading": ( node ) => {
@@ -178,23 +200,63 @@ function extractWidgetHtml( node ) {
  * @returns {string} The concatenated content HTML.
  */
 export function walkAtomicTree( nodes ) {
-	// Backbone Collections (returned by model.toJSON() shallow clones) expose toJSON().
-	// Convert them to plain arrays so Array.isArray passes at every nesting level.
-	if ( typeof nodes?.toJSON === "function" ) {
-		nodes = nodes.toJSON();
-	}
+	nodes = toPlainNodes( nodes );
 	if ( ! Array.isArray( nodes ) ) {
 		return "";
 	}
 	return nodes.map( ( node ) => {
-		if ( ! node || typeof node !== "object" ) {
-			return "";
-		}
-		if ( EXCLUDED_WIDGET_TYPES.has( node.widgetType ) ) {
+		if ( shouldSkipNode( node ) ) {
 			return "";
 		}
 		return extractWidgetHtml( node ) + walkAtomicTree( node.elements );
 	} ).join( "" );
+}
+
+/**
+ * @typedef {Object} WidgetEntry
+ * @property {string} id         Widget node ID.
+ * @property {string} widgetType The widget type (e.g. "e-heading", "text-editor").
+ * @property {number} start      Start offset in the normalised concatenated content string.
+ * @property {number} end        End offset (exclusive) in the normalised concatenated content string.
+ */
+
+/**
+ * Like walkAtomicTree but also returns per-widget position metadata.
+ *
+ * Positions are in the normalised string (with \n and \t removed), matching
+ * the content dispatched to the store by editor-data.js.
+ *
+ * @param {Object[]} nodes The `_elementor_data` array (or a sub-tree's `elements`).
+ * @returns {{ content: string, widgets: WidgetEntry[] }} The content and widget map.
+ */
+export function walkAtomicTreeWithMap( nodes ) {
+	nodes = toPlainNodes( nodes );
+	if ( ! Array.isArray( nodes ) ) {
+		return { content: "", widgets: [] };
+	}
+
+	let content = "";
+	const widgets = [];
+
+	for ( const node of nodes ) {
+		if ( shouldSkipNode( node ) ) {
+			continue;
+		}
+
+		// Normalise to keep positions in sync with editor-data.js, which strips \n and \t.
+		const ownHtml = extractWidgetHtml( node ).replace( /[\n\t]/g, "" );
+		if ( ownHtml !== "" && node.id ) {
+			widgets.push( { id: node.id, widgetType: node.widgetType, start: content.length, end: content.length + ownHtml.length } );
+			content += ownHtml;
+		}
+
+		const child = walkAtomicTreeWithMap( node.elements );
+		const offset = content.length;
+		widgets.push( ...child.widgets.map( w => ( { ...w, start: w.start + offset, end: w.end + offset } ) ) );
+		content += child.content;
+	}
+
+	return { content, widgets };
 }
 
 export const __testables__ = {

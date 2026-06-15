@@ -119,13 +119,19 @@ describe( "content-walker per-widget extractors", () => {
 		} );
 	} );
 
-	describe( "e-tab", () => {
-		it( "emits the tab label as a button so it is part of analysable text", () => {
+	describe( "e-youtube", () => {
+		it( "emits a labelled anchor for the video URL", () => {
 			const node = {
-				widgetType: "e-tab",
-				settings: { title: htmlV3Prop( "Pricing" ) },
+				widgetType: "e-youtube",
+				settings: { source: { $$type: "string", value: "https://www.youtube.com/watch?v=abc123" } },
 			};
-			expect( EXTRACTORS[ "e-tab" ]( node ) ).toBe( "<button>Pricing</button>" );
+			expect( EXTRACTORS[ "e-youtube" ]( node ) ).toBe(
+				"<a href=\"https://www.youtube.com/watch?v=abc123\">YouTube video</a>"
+			);
+		} );
+
+		it( "returns empty when the source URL is absent", () => {
+			expect( EXTRACTORS[ "e-youtube" ]( { widgetType: "e-youtube", settings: {} } ) ).toBe( "" );
 		} );
 	} );
 } );
