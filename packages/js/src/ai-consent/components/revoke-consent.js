@@ -18,18 +18,11 @@ export const RevokeConsent = ( { onClose } ) => {
 	const endpoint = useSelect( select => select( STORE_NAME_AI_CONSENT ).selectAiGeneratorConsentEndpoint(), [] );
 
 	const [ isLoading, setIsLoading ] = useState( false );
-	const [ error, setError ] = useState( false );
 
 	const handleRevokeConsent = useCallback( async() => {
-		setError( false );
 		setIsLoading( true );
 
-		const response = await storeAiGeneratorConsent( false, endpoint );
-		if ( response.consent === false ) {
-			setError( true );
-			setIsLoading( false );
-			return;
-		}
+		await storeAiGeneratorConsent( false, endpoint );
 		onClose();
 
 		setIsLoading( false );
@@ -52,12 +45,6 @@ export const RevokeConsent = ( { onClose } ) => {
 				>
 					{ __( "Revoke AI consent", "wordpress-seo" ) }
 				</Modal.Title>
-				{ error && <Alert
-					className="yst-mt-2"
-					variant="error"
-				>
-					{ __( "Something went wrong, please try again later.", "wordpress-seo" ) }
-				</Alert> }
 				<p className="yst-mt-2 yst-text-slate-600">
 					{   }
 					{ __( "By revoking your consent, you will no longer have access to Yoast AI features. Are you sure you want to revoke your consent?", "wordpress-seo" ) }
