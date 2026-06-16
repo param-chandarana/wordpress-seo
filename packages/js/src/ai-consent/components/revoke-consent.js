@@ -14,7 +14,7 @@ import { STORE_NAME_AI_CONSENT } from "../constants";
  * @returns {JSX.Element} The element.
  */
 export const RevokeConsent = ( { onClose } ) => {
-	const { storeAiGeneratorConsent } = useDispatch( STORE_NAME_AI_CONSENT );
+	const { storeAiGeneratorConsent, giveAiGeneratorConsent } = useDispatch( STORE_NAME_AI_CONSENT );
 	const endpoint = useSelect( select => select( STORE_NAME_AI_CONSENT ).selectAiGeneratorConsentEndpoint(), [] );
 
 	const [ isLoading, setIsLoading ] = useState( false );
@@ -23,10 +23,13 @@ export const RevokeConsent = ( { onClose } ) => {
 		setIsLoading( true );
 
 		await storeAiGeneratorConsent( false, endpoint );
+		// The backend always revokes consent locally, even when the remote call fails, so the
+		// local store must reflect that regardless of the request's outcome.
+		giveAiGeneratorConsent( false );
 		onClose();
 
 		setIsLoading( false );
-	}, [ storeAiGeneratorConsent, setIsLoading, onClose, endpoint ] );
+	}, [ storeAiGeneratorConsent, giveAiGeneratorConsent, setIsLoading, onClose, endpoint ] );
 
 	return (
 		<div className="yst-flex yst-flex-row">
