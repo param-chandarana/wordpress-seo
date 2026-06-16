@@ -6,12 +6,14 @@ use Mockery;
 use Yoast\WP\SEO\Expiring_Store\Application\Expiring_Store;
 use Yoast\WP\SEO\Expiring_Store\Domain\Key_Not_Found_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Application\Authorization_Code_Handler;
+use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Authorization_Flow_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Token_Request_Failed_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Application\Grants\Authorization_Code_Grant;
 use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Grant_Handler;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Client_Registration_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Discovery_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\ID_Token_Validator_Interface;
+use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Redirect_URI_Provider_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Discovery_Document;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Registered_Client;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Resource_Indicator;
@@ -68,6 +70,13 @@ final class Authorization_Code_Handler_Test extends TestCase {
 	private $expiring_store;
 
 	/**
+	 * The redirect URI provider mock.
+	 *
+	 * @var Redirect_URI_Provider_Interface|Mockery\MockInterface
+	 */
+	private $redirect_uri_provider;
+
+	/**
 	 * Set up the test fixtures.
 	 *
 	 * @return void
@@ -75,11 +84,15 @@ final class Authorization_Code_Handler_Test extends TestCase {
 	protected function set_up() {
 		parent::set_up();
 
-		$this->discovery           = Mockery::mock( Discovery_Interface::class );
-		$this->client_registration = Mockery::mock( Client_Registration_Interface::class );
-		$this->grant_handler       = Mockery::mock( OAuth_Grant_Handler::class );
-		$this->id_token_validator  = Mockery::mock( ID_Token_Validator_Interface::class );
-		$this->expiring_store      = Mockery::mock( Expiring_Store::class );
+		$this->discovery             = Mockery::mock( Discovery_Interface::class );
+		$this->client_registration   = Mockery::mock( Client_Registration_Interface::class );
+		$this->grant_handler         = Mockery::mock( OAuth_Grant_Handler::class );
+		$this->id_token_validator    = Mockery::mock( ID_Token_Validator_Interface::class );
+		$this->expiring_store        = Mockery::mock( Expiring_Store::class );
+		$this->redirect_uri_provider = Mockery::mock( Redirect_URI_Provider_Interface::class );
+
+		$this->redirect_uri_provider->allows( 'get_redirect_uris' )->andReturn( [ 'https://example.com/callback' ] );
+		$this->redirect_uri_provider->allows( 'get_authorization_redirect_uri' )->andReturn( 'https://example.com/callback' );
 
 		$this->instance = new Authorization_Code_Handler(
 			$this->discovery,
@@ -87,6 +100,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			$this->grant_handler,
 			$this->id_token_validator,
 			$this->expiring_store,
+			$this->redirect_uri_provider,
 		);
 	}
 
@@ -101,7 +115,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
 
 		$this->client_registration
-			->expects( 'ensure_registered' )
+			->expects( 'get_registered_client' )
 			->andReturn( $registered_client );
 
 		$document = new Discovery_Document( $this->get_valid_discovery_response() );
@@ -115,7 +129,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 			->once()
 			->with( 'myyoast_current_authorization_state', Mockery::type( 'array' ), 600, 1 );
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], Resource_Indicator::default() );
+		$url = $this->instance->get_authorization_url( 1, [ 'profile' ], Resource_Indicator::default() );
 
 		$this->assertStringStartsWith( 'https://my.yoast.com/api/oauth/auth?', $url );
 		$this->assertStringContainsString( 'response_type=code', $url );
@@ -125,6 +139,32 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->assertStringContainsString( 'state=', $url );
 		$this->assertStringNotContainsString( 'nonce=', $url );
 		$this->assertStringNotContainsString( 'resource=', $url );
+	}
+
+	/**
+	 * Tests that get_authorization_url throws when the site is not registered, without triggering
+	 * DCR or contacting discovery.
+	 *
+	 * @covers ::get_authorization_url
+	 *
+	 * @return void
+	 */
+	public function test_get_authorization_url_throws_when_not_registered() {
+		$this->client_registration
+			->expects( 'get_registered_client' )
+			->once()
+			->andReturn( null );
+
+		$this->discovery->shouldNotReceive( 'get_document' );
+		$this->expiring_store->shouldNotReceive( 'persist_for_user' );
+
+		try {
+			$this->instance->get_authorization_url( 1, [ 'profile' ], Resource_Indicator::default() );
+			$this->fail( 'Expected Authorization_Flow_Exception.' );
+		}
+		catch ( Authorization_Flow_Exception $exception ) {
+			$this->assertSame( 'not_registered', $exception->get_error_code() );
+		}
 	}
 
 	/**
@@ -138,7 +178,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
 
 		$this->client_registration
-			->expects( 'ensure_registered' )
+			->expects( 'get_registered_client' )
 			->andReturn( $registered_client );
 
 		$document = new Discovery_Document( $this->get_valid_discovery_response() );
@@ -163,7 +203,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 				1,
 			);
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'openid', 'profile' ], Resource_Indicator::default() );
+		$url = $this->instance->get_authorization_url( 1, [ 'openid', 'profile' ], Resource_Indicator::default() );
 
 		$this->assertStringContainsString( 'nonce=', $url );
 	}
@@ -179,7 +219,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
 
 		$this->client_registration
-			->expects( 'ensure_registered' )
+			->expects( 'get_registered_client' )
 			->andReturn( $registered_client );
 
 		$document = new Discovery_Document( $this->get_valid_discovery_response() );
@@ -203,7 +243,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 				1,
 			);
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], Resource_Indicator::default(), 'https://example.com/settings' );
+		$url = $this->instance->get_authorization_url( 1, [ 'profile' ], Resource_Indicator::default(), 'https://example.com/settings' );
 
 		$this->assertStringStartsWith( 'https://my.yoast.com/api/oauth/auth?', $url );
 	}
@@ -537,7 +577,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
 
 		$this->client_registration
-			->expects( 'ensure_registered' )
+			->expects( 'get_registered_client' )
 			->andReturn( $registered_client );
 
 		$document = new Discovery_Document( $this->get_valid_discovery_response() );
@@ -558,7 +598,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 				1,
 			);
 
-		$url = $this->instance->get_authorization_url( 1, 'https://example.com/callback', [ 'profile' ], new Resource_Indicator( 'https://ai.yoa.st' ) );
+		$url = $this->instance->get_authorization_url( 1, [ 'profile' ], new Resource_Indicator( 'https://ai.yoa.st' ) );
 
 		$this->assertStringContainsString( 'resource=https%3A%2F%2Fai.yoa.st', $url );
 	}

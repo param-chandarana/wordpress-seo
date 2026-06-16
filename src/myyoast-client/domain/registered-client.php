@@ -120,12 +120,68 @@ class Registered_Client {
 	}
 
 	/**
+	 * Returns the redirect URIs this client is registered with.
+	 *
+	 * @return string[]
+	 */
+	public function get_redirect_uris(): array {
+		$redirect_uris = ( $this->metadata['redirect_uris'] ?? [] );
+
+		return ( \is_array( $redirect_uris ) ) ? \array_values( $redirect_uris ) : [];
+	}
+
+	/**
+	 * Whether this client's registered redirect URIs exactly match the given set (order-insensitive),
+	 * so both additions and removals count as a mismatch.
+	 *
+	 * @param string[] $redirect_uris The redirect-URI set to compare against.
+	 *
+	 * @return bool
+	 */
+	public function has_redirect_uris( array $redirect_uris ): bool {
+		$wanted = \array_unique( $redirect_uris );
+		$stored = \array_unique( $this->get_redirect_uris() );
+		\sort( $wanted );
+		\sort( $stored );
+
+		return $wanted === $stored;
+	}
+
+	/**
 	 * Returns the redirect URIs that have completed the authorization-code flow on this site.
 	 *
 	 * @return string[]
 	 */
 	public function get_validated_uris(): array {
 		return $this->validated_uris;
+	}
+
+	/**
+	 * Whether the given redirect URI has completed the authorization-code flow on this site.
+	 *
+	 * @param string $redirect_uri The redirect URI to check.
+	 *
+	 * @return bool
+	 */
+	public function is_uri_validated( string $redirect_uri ): bool {
+		return \in_array( $redirect_uri, $this->validated_uris, true );
+	}
+
+	/**
+	 * Returns a copy of this client with its validated redirect URIs replaced.
+	 *
+	 * @param string[] $validated_uris The redirect URIs that have completed the auth-code flow.
+	 *
+	 * @return self
+	 */
+	public function with_validated_uris( array $validated_uris ): self {
+		return new self(
+			$this->client_id,
+			$this->registration_access_token,
+			$this->registration_client_uri,
+			$this->metadata,
+			$validated_uris,
+		);
 	}
 
 	/**

@@ -161,21 +161,6 @@ final class Client_Registration_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that is_registered returns correct values.
-	 *
-	 * @covers ::is_registered
-	 *
-	 * @return void
-	 */
-	public function test_is_registered() {
-		Functions\expect( 'get_option' )
-			->with( self::OPTION_KEY, false )
-			->andReturn( false );
-
-		$this->assertFalse( $this->instance->is_registered() );
-	}
-
-	/**
 	 * Tests that register throws when another registration is in progress.
 	 *
 	 * @covers ::register
@@ -463,42 +448,42 @@ final class Client_Registration_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that has_validated_redirect_uri returns false when the site is not registered.
+	 * Tests that is_uri_validated returns false when the site is not registered.
 	 *
-	 * @covers ::has_validated_redirect_uri
+	 * @covers ::is_uri_validated
 	 *
 	 * @return void
 	 */
-	public function test_has_validated_redirect_uri_returns_false_when_not_registered() {
+	public function test_is_uri_validated_returns_false_when_not_registered() {
 		Functions\expect( 'get_option' )
 			->once()
 			->with( self::OPTION_KEY, false )
 			->andReturn( false );
 
-		$this->assertFalse( $this->instance->has_validated_redirect_uri() );
+		$this->assertFalse( $this->instance->is_uri_validated( 'https://example.com/callback' ) );
 	}
 
 	/**
-	 * Tests that has_validated_redirect_uri returns false when no redirect URI has been validated yet.
+	 * Tests that is_uri_validated returns false when the URI has not been validated yet.
 	 *
-	 * @covers ::has_validated_redirect_uri
+	 * @covers ::is_uri_validated
 	 *
 	 * @return void
 	 */
-	public function test_has_validated_redirect_uri_returns_false_when_none_validated() {
+	public function test_is_uri_validated_returns_false_when_uri_not_validated() {
 		$this->mock_get_client();
 
-		$this->assertFalse( $this->instance->has_validated_redirect_uri() );
+		$this->assertFalse( $this->instance->is_uri_validated( 'https://example.com/callback' ) );
 	}
 
 	/**
-	 * Tests that has_validated_redirect_uri returns true when a redirect URI has been validated.
+	 * Tests that is_uri_validated returns true only for a redirect URI that has been validated.
 	 *
-	 * @covers ::has_validated_redirect_uri
+	 * @covers ::is_uri_validated
 	 *
 	 * @return void
 	 */
-	public function test_has_validated_redirect_uri_returns_true_when_a_uri_is_validated() {
+	public function test_is_uri_validated_returns_true_for_a_validated_uri() {
 		Functions\expect( 'get_option' )
 			->with( self::OPTION_KEY, false )
 			->andReturn(
@@ -513,7 +498,95 @@ final class Client_Registration_Test extends TestCase {
 
 		$this->encryption->expects( 'decrypt' )->andReturn( 'decrypted-rat' );
 
-		$this->assertTrue( $this->instance->has_validated_redirect_uri() );
+		$this->assertTrue( $this->instance->is_uri_validated( 'https://example.com/callback' ) );
+		$this->assertFalse( $this->instance->is_uri_validated( 'https://other.example/callback' ) );
+	}
+
+	/**
+	 * Tests that ensure_registered is a no-op (no HTTP, returns the stored client) when the
+	 * redirect-URI set already matches.
+	 *
+	 * @covers ::ensure_registered
+	 *
+	 * @return void
+	 */
+	public function test_ensure_registered_is_noop_when_set_matches() {
+		$this->mock_get_client( [ 'redirect_uris' => [ 'https://example.com/callback' ] ] );
+
+		$this->http_client->expects( 'authenticated_request' )->never();
+		$this->http_client->expects( 'request' )->never();
+
+		$result = $this->instance->ensure_registered( [ 'https://example.com/callback' ] );
+
+		$this->assertSame( 'cid', $result->get_client_id() );
+	}
+
+	/**
+	 * Tests that ensure_registered updates the registration in place (RFC 7592 PUT, no
+	 * deregister/re-register) when the redirect-URI set differs, preserving the client_id and
+	 * pruning the validated URIs to the new set.
+	 *
+	 * @covers ::ensure_registered
+	 * @covers ::update_redirect_uris
+	 * @covers ::store_credentials
+	 *
+	 * @return void
+	 */
+	public function test_ensure_registered_updates_in_place_and_prunes_validated_uris() {
+		// Registered with A + B, both validated.
+		Functions\expect( 'get_option' )
+			->with( self::OPTION_KEY, Mockery::any() )
+			->andReturn(
+				[
+					'client_id'               => 'cid',
+					'encrypted_rat'           => 'encrypted-rat',
+					'registration_client_uri' => 'https://my.yoast.com/api/oauth/reg/cid',
+					'metadata'                => [ 'redirect_uris' => [ 'https://a.example/cb', 'https://b.example/cb' ] ],
+					'validated_uris'          => [ 'https://a.example/cb', 'https://b.example/cb' ],
+				],
+			);
+
+		$this->encryption->allows( 'decrypt' )->andReturn( 'decrypted-rat' );
+		$this->encryption->allows( 'encrypt' )->andReturn( 'encrypted-rat' );
+		$this->issuer_config->expects( 'get_software_statement' )->andReturn( 'fresh-ss-jwt' );
+		Functions\expect( 'wp_json_encode' )->andReturn( '{}' );
+
+		// A single in-place PUT — never a DELETE or a POST register.
+		$this->http_client
+			->expects( 'authenticated_request' )
+			->once()
+			->with( 'PUT', Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any() )
+			->andReturn(
+				new HTTP_Response(
+					200,
+					[],
+					[
+						'client_id'                 => 'cid',
+						'registration_access_token' => 'rat',
+						'registration_client_uri'   => 'https://my.yoast.com/api/oauth/reg/cid',
+						'redirect_uris'             => [ 'https://a.example/cb', 'https://c.example/cb' ],
+					],
+				),
+			);
+
+		// B is pruned (removed from the set); C is not validated (newly added); A is kept.
+		Functions\expect( 'update_option' )
+			->once()
+			->with(
+				self::OPTION_KEY,
+				Mockery::on(
+					static function ( $option ) {
+						return ( $option['validated_uris'] ?? null ) === [ 'https://a.example/cb' ];
+					},
+				),
+				false,
+			)
+			->andReturn( true );
+
+		$result = $this->instance->ensure_registered( [ 'https://a.example/cb', 'https://c.example/cb' ] );
+
+		$this->assertSame( 'cid', $result->get_client_id() );
+		$this->assertSame( [ 'https://a.example/cb' ], $result->get_validated_uris() );
 	}
 
 	/**
