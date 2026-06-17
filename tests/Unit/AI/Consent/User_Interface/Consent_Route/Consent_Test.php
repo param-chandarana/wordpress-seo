@@ -68,7 +68,7 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 
 			$wp_rest_response
 				->expects( '__construct' )
-				->with( 'Consent successfully stored.' )
+				->with( 'Consent successfully given.' )
 				->once();
 		}
 		else {
@@ -139,7 +139,7 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 
 			$wp_rest_response
 				->expects( '__construct' )
-				->with( 'Failed to store consent.', 500 )
+				->with( 'Failed to give consent.', 500 )
 				->once();
 		}
 		else {

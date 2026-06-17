@@ -11,7 +11,6 @@ use Yoast\WP\SEO\AI\Authorization\Application\Token_Manager;
 use Yoast\WP\SEO\AI\Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI\HTTP_Request\Application\Request_Handler;
 use Yoast\WP\SEO\Helpers\User_Helper;
-use Yoast\WP\SEO\Loggers\Logger;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
 /**
@@ -50,13 +49,6 @@ abstract class Abstract_Consent_Handler_Test extends TestCase {
 	protected $request_handler;
 
 	/**
-	 * The logger instance.
-	 *
-	 * @var Mockery\MockInterface|Logger
-	 */
-	protected $logger;
-
-	/**
 	 * Setup the test.
 	 *
 	 * @return void
@@ -67,13 +59,11 @@ abstract class Abstract_Consent_Handler_Test extends TestCase {
 		$this->user_helper     = Mockery::mock( User_Helper::class );
 		$this->token_manager   = Mockery::mock( Token_Manager::class );
 		$this->request_handler = Mockery::mock( Request_Handler::class );
-		$this->logger          = Mockery::mock( Logger::class );
 
 		$this->instance = new Consent_Handler(
 			$this->user_helper,
 			$this->token_manager,
 			$this->request_handler,
-			$this->logger,
 		);
 	}
 

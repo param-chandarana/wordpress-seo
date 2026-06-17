@@ -21,13 +21,19 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 
 	/**
-	 * Tests revoking the consent on the happy path: token fetched, DELETE succeeds, local meta deleted.
+	 * Tests revoking the consent on the happy path: local meta deleted first, then token fetched and
+	 * DELETE succeeds.
 	 *
 	 * @return void
 	 */
 	public function test_revoke_consent_success() {
 		$user_id = 1;
 		$user    = $this->stub_get_user_by( $user_id );
+
+		$this->user_helper->expects( 'delete_meta' )
+			->once()
+			->with( $user_id, '_yoast_wpseo_ai_consent' )
+			->andReturn( true );
 
 		$this->token_manager->expects( 'get_or_request_access_token' )
 			->once()
@@ -48,25 +54,23 @@ final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 				),
 			);
 
-		$this->logger->shouldNotReceive( 'warning' );
+		$this->instance->revoke_consent( $user_id );
+	}
+
+	/**
+	 * Tests that revoke_consent propagates a Remote_Request_Exception thrown by the DELETE call,
+	 * while local meta has already been deleted.
+	 *
+	 * @return void
+	 */
+	public function test_revoke_consent_propagates_remote_exception_on_delete() {
+		$user_id = 1;
+		$user    = $this->stub_get_user_by( $user_id );
 
 		$this->user_helper->expects( 'delete_meta' )
 			->once()
 			->with( $user_id, '_yoast_wpseo_ai_consent' )
 			->andReturn( true );
-
-		$this->instance->revoke_consent( $user_id );
-	}
-
-	/**
-	 * Tests that revoke_consent catches a Remote_Request_Exception thrown by the DELETE call,
-	 * logs a warning, and still clears the local meta (security-first).
-	 *
-	 * @return void
-	 */
-	public function test_revoke_consent_swallows_remote_exception_on_delete() {
-		$user_id = 1;
-		$user    = $this->stub_get_user_by( $user_id );
 
 		$this->token_manager->expects( 'get_or_request_access_token' )
 			->once()
@@ -77,57 +81,52 @@ final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 			->once()
 			->andThrow( new Internal_Server_Error_Exception( 'Internal Server Error', 500 ) );
 
-		$this->logger->expects( 'warning' )
-			->once()
-			->with( Mockery::type( 'string' ), Mockery::type( 'array' ) );
-
-		$this->user_helper->expects( 'delete_meta' )
-			->once()
-			->with( $user_id, '_yoast_wpseo_ai_consent' )
-			->andReturn( true );
+		$this->expectException( Internal_Server_Error_Exception::class );
 
 		$this->instance->revoke_consent( $user_id );
 	}
 
 	/**
-	 * Tests that revoke_consent catches a Remote_Request_Exception thrown while fetching the access
-	 * token, logs a warning, and still clears the local meta.
+	 * Tests that revoke_consent propagates a Remote_Request_Exception thrown while fetching the
+	 * access token, while local meta has already been deleted.
 	 *
 	 * @return void
 	 */
-	public function test_revoke_consent_swallows_remote_exception_on_token_fetch() {
+	public function test_revoke_consent_propagates_remote_exception_on_token_fetch() {
 		$user_id = 1;
 		$user    = $this->stub_get_user_by( $user_id );
+
+		$this->user_helper->expects( 'delete_meta' )
+			->once()
+			->with( $user_id, '_yoast_wpseo_ai_consent' )
+			->andReturn( true );
 
 		$this->token_manager->expects( 'get_or_request_access_token' )
 			->once()
 			->with( $user )
 			->andThrow( new Forbidden_Exception( 'Forbidden', 403 ) );
 
-		// DELETE should not be attempted when the token fetch fails.
 		$this->request_handler->shouldNotReceive( 'handle' );
 
-		$this->logger->expects( 'warning' )
-			->once()
-			->with( Mockery::type( 'string' ), Mockery::type( 'array' ) );
-
-		$this->user_helper->expects( 'delete_meta' )
-			->once()
-			->with( $user_id, '_yoast_wpseo_ai_consent' )
-			->andReturn( true );
+		$this->expectException( Forbidden_Exception::class );
 
 		$this->instance->revoke_consent( $user_id );
 	}
 
 	/**
-	 * Tests that revoke_consent catches a WP_Request_Exception (transport-level error) and still
-	 * clears the local meta.
+	 * Tests that revoke_consent propagates a WP_Request_Exception (transport-level error), while
+	 * local meta has already been deleted.
 	 *
 	 * @return void
 	 */
-	public function test_revoke_consent_swallows_wp_request_exception() {
+	public function test_revoke_consent_propagates_wp_request_exception() {
 		$user_id = 1;
 		$user    = $this->stub_get_user_by( $user_id );
+
+		$this->user_helper->expects( 'delete_meta' )
+			->once()
+			->with( $user_id, '_yoast_wpseo_ai_consent' )
+			->andReturn( true );
 
 		$this->token_manager->expects( 'get_or_request_access_token' )
 			->once()
@@ -138,26 +137,25 @@ final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 			->once()
 			->andThrow( new WP_Request_Exception( 'WP_HTTP_REQUEST_ERROR' ) );
 
-		$this->logger->expects( 'warning' )
-			->once();
-
-		$this->user_helper->expects( 'delete_meta' )
-			->once()
-			->with( $user_id, '_yoast_wpseo_ai_consent' )
-			->andReturn( true );
+		$this->expectException( WP_Request_Exception::class );
 
 		$this->instance->revoke_consent( $user_id );
 	}
 
 	/**
-	 * Tests that revoke_consent does NOT swallow non-HTTP-layer exceptions: a RuntimeException from
-	 * the token manager must propagate out so that programmer errors stay visible.
+	 * Tests that revoke_consent propagates a RuntimeException from the token manager, while local
+	 * meta has already been deleted.
 	 *
 	 * @return void
 	 */
-	public function test_revoke_consent_does_not_swallow_runtime_exception() {
+	public function test_revoke_consent_propagates_runtime_exception() {
 		$user_id = 1;
 		$user    = $this->stub_get_user_by( $user_id );
+
+		$this->user_helper->expects( 'delete_meta' )
+			->once()
+			->with( $user_id, '_yoast_wpseo_ai_consent' )
+			->andReturn( true );
 
 		$this->token_manager->expects( 'get_or_request_access_token' )
 			->once()
@@ -165,8 +163,6 @@ final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 			->andThrow( new RuntimeException( 'unexpected programmer error' ) );
 
 		$this->request_handler->shouldNotReceive( 'handle' );
-		$this->logger->shouldNotReceive( 'warning' );
-		$this->user_helper->shouldNotReceive( 'delete_meta' );
 
 		$this->expectException( RuntimeException::class );
 
