@@ -94,6 +94,13 @@ final class MyYoast_Client_Test extends TestCase {
 	private $http_client;
 
 	/**
+	 * The redirect URI provider mock.
+	 *
+	 * @var Redirect_URI_Provider_Interface|Mockery\MockInterface
+	 */
+	private $redirect_uri_provider;
+
+	/**
 	 * Set up the test fixtures.
 	 *
 	 * @return void
