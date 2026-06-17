@@ -2,7 +2,7 @@ import ExclamationIcon from "@heroicons/react/outline/ExclamationIcon";
 import { useDispatch, useSelect } from "@wordpress/data";
 import { useCallback, useState } from "@wordpress/element";
 import { __ } from "@wordpress/i18n";
-import { Alert, Button, Modal } from "@yoast/ui-library";
+import { Button, Modal } from "@yoast/ui-library";
 
 import { STORE_NAME_AI_CONSENT } from "../constants";
 
