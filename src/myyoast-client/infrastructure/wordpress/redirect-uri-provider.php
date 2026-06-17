@@ -52,13 +52,19 @@ class Redirect_URI_Provider implements Redirect_URI_Provider_Interface {
 	/**
 	 * Returns the single redirect URI to embed in an authorization request.
 	 *
+	 * Prefers the canonical admin callback URL when the client has it registered, otherwise the
+	 * first registered redirect URI. The choice may then be overridden through the
+	 * `wpseo_myyoast_authorization_redirect_uri` filter, but a filtered value that is not among the
+	 * client's registered redirect URIs is ignored to keep the contract's exact-match guarantee.
+	 * When the client has no registered redirect URIs, the canonical admin callback URL is returned.
+	 *
 	 * @param Registered_Client  $client             The registered client whose redirect_uris bound the result.
 	 * @param int                $user_id            The WordPress user ID starting the flow.
 	 * @param string[]           $scopes             The scopes being requested.
 	 * @param Resource_Indicator $resource_indicator The RFC 8707 resource indicator the token will be bound to.
 	 * @param string|null        $return_url         The URL the user returns to after authorization, or null.
 	 *
-	 * @return string A redirect URI guaranteed to be present in $client's registered redirect_uris.
+	 * @return string One of $client's registered redirect URIs, or the canonical admin callback URL when it has none.
 	 */
 	public function get_authorization_redirect_uri(
 		Registered_Client $client,
@@ -136,13 +142,13 @@ class Redirect_URI_Provider implements Redirect_URI_Provider_Interface {
 	}
 
 	/**
-	 * Filters untrusted input down to its non-empty string values, preserving order.
+	 * Filters untrusted input down to its trimmed, non-empty string values, preserving order.
 	 *
 	 * phpcs:disable SlevomatCodingStandard.TypeHints.DisallowMixedTypeHint.DisallowedMixedTypeHint -- Untrusted filter/metadata input.
 	 *
 	 * @param mixed $uris The candidate URIs (untrusted filter or metadata input).
 	 *
-	 * @return string[] The non-empty string URIs.
+	 * @return string[] The trimmed, non-empty string URIs.
 	 *
 	 * phpcs:enable SlevomatCodingStandard.TypeHints.DisallowMixedTypeHint.DisallowedMixedTypeHint
 	 */
@@ -153,8 +159,13 @@ class Redirect_URI_Provider implements Redirect_URI_Provider_Interface {
 
 		$valid = [];
 		foreach ( $uris as $uri ) {
-			if ( \is_string( $uri ) && $uri !== '' ) {
-				$valid[] = $uri;
+			if ( ! \is_string( $uri ) ) {
+				continue;
+			}
+
+			$trimmed = \trim( $uri );
+			if ( $trimmed !== '' ) {
+				$valid[] = $trimmed;
 			}
 		}
 

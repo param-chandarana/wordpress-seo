@@ -85,6 +85,29 @@ final class Redirect_URI_Provider_Test extends TestCase {
 	}
 
 	/**
+	 * Tests that get_redirect_uris trims surrounding whitespace and drops whitespace-only URIs.
+	 *
+	 * @covers ::get_redirect_uris
+	 *
+	 * @return void
+	 */
+	public function test_get_redirect_uris_trims_and_drops_blank_uris() {
+		Functions\expect( 'apply_filters' )
+			->once()
+			->andReturn(
+				[
+					'  https://proxy.example/cb  ',
+					'   ',
+				],
+			);
+
+		$this->assertSame(
+			[ 'https://proxy.example/cb' ],
+			$this->instance->get_redirect_uris(),
+		);
+	}
+
+	/**
 	 * Tests that get_redirect_uris collapses duplicate URIs returned by the filter into a set.
 	 *
 	 * @covers ::get_redirect_uris

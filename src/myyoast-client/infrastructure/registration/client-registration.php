@@ -531,7 +531,9 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 		$validated_uris = [];
 		if ( $existing !== null && $existing->get_client_id() === $response_body['client_id'] ) {
 			$new_redirect_uris = ( $metadata['redirect_uris'] ?? [] );
-			$validated_uris    = \array_values( \array_intersect( $existing->get_validated_uris(), $new_redirect_uris ) );
+			if ( \is_array( $new_redirect_uris ) ) {
+				$validated_uris = \array_values( \array_intersect( $existing->get_validated_uris(), $new_redirect_uris ) );
+			}
 		}
 
 		\update_option(
