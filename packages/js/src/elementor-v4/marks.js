@@ -1,7 +1,7 @@
 /* global elementor, YoastSEO */
 import { dispatch } from "@wordpress/data";
 import { Paper } from "yoastseo";
-import { walkAtomicTreeWithMap } from "./content-walker";
+import { buildContentAndMap } from "./content-walker";
 import { getDocumentTree } from "./document-tree";
 
 /**
@@ -31,7 +31,7 @@ function resetMarks() {
  */
 export function getWidgetMap( currentDocument = elementor.documents.getCurrent() ) {
 	const tree = getDocumentTree( currentDocument );
-	return walkAtomicTreeWithMap( tree ).widgets;
+	return buildContentAndMap( tree, currentDocument.$element ).widgets;
 }
 
 export { resetMarks };

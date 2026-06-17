@@ -8,7 +8,7 @@ jest.mock( "../../src/helpers/firstImageUrlInContent" );
 jest.mock( "../../src/helpers/replacementVariableHelpers" );
 jest.mock( "../../src/analysis/getContentLocale" );
 
-import { walkAtomicTree } from "../../src/elementor-v4/content-walker";
+import { buildContentAndMap } from "../../src/elementor-v4/content-walker";
 import { getDocumentTree } from "../../src/elementor-v4/document-tree";
 import firstImageUrlInContent from "../../src/helpers/firstImageUrlInContent";
 import { excerptFromContent } from "../../src/helpers/replacementVariableHelpers";
@@ -39,32 +39,30 @@ const defaultSettings = {
 	[ PAGE_SETTING_KEYS.FEATURED_IMAGE ]: null,
 };
 
-const makeEditorDocument = ( $elementOverride = null ) => ( {
-	$element: $elementOverride ?? {
-		find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( null ) } ),
-	},
-} );
+// The walker reads from editorDocument.$element; getEditorData passes it straight through.
+const makeEditorDocument = () => ( { $element: { find: jest.fn() } } );
 
 beforeEach( () => {
 	jest.clearAllMocks();
 	mockPageModelGet.mockImplementation( ( key ) => defaultSettings[ key ] ?? null );
 	getDocumentTree.mockReturnValue( [] );
-	walkAtomicTree.mockReturnValue( "" );
+	buildContentAndMap.mockReturnValue( { content: "", widgets: [] } );
 	firstImageUrlInContent.mockReturnValue( "" );
 	excerptFromContent.mockReturnValue( "generated excerpt" );
 	getContentLocale.mockReturnValue( "en" );
 } );
 
 describe( "getEditorData", () => {
-	it( "returns content produced by walkAtomicTree", () => {
+	it( "returns the content produced by buildContentAndMap from the document's preview element", () => {
 		const tree = [ { id: "h1", widgetType: "e-heading" } ];
+		const editorDocument = makeEditorDocument();
 		getDocumentTree.mockReturnValue( tree );
-		walkAtomicTree.mockReturnValue( "<h1>Hello</h1>" );
+		buildContentAndMap.mockReturnValue( { content: "<h1>Hello</h1>", widgets: [] } );
 
-		const result = getEditorData( makeEditorDocument() );
+		const result = getEditorData( editorDocument );
 
-		expect( getDocumentTree ).toHaveBeenCalled();
-		expect( walkAtomicTree ).toHaveBeenCalledWith( tree );
+		expect( getDocumentTree ).toHaveBeenCalledWith( editorDocument );
+		expect( buildContentAndMap ).toHaveBeenCalledWith( tree, editorDocument.$element );
 		expect( result.content ).toBe( "<h1>Hello</h1>" );
 	} );
 
@@ -92,7 +90,7 @@ describe( "getEditorData", () => {
 	} );
 
 	it( "falls back to excerptFromContent when post_excerpt is absent", () => {
-		walkAtomicTree.mockReturnValue( "<p>Long content here.</p>" );
+		buildContentAndMap.mockReturnValue( { content: "<p>Long content here.</p>", widgets: [] } );
 		excerptFromContent.mockReturnValue( "Auto-generated excerpt." );
 
 		const result = getEditorData( makeEditorDocument() );
@@ -103,7 +101,7 @@ describe( "getEditorData", () => {
 
 	it( "uses a character limit of 80 for the Japanese locale", () => {
 		getContentLocale.mockReturnValue( "ja" );
-		walkAtomicTree.mockReturnValue( "<p>Content.</p>" );
+		buildContentAndMap.mockReturnValue( { content: "<p>Content.</p>", widgets: [] } );
 
 		getEditorData( makeEditorDocument() );
 
@@ -111,7 +109,7 @@ describe( "getEditorData", () => {
 	} );
 
 	it( "returns excerptOnly from post_excerpt with no content fallback", () => {
-		walkAtomicTree.mockReturnValue( "<p>Content.</p>" );
+		buildContentAndMap.mockReturnValue( { content: "<p>Content.</p>", widgets: [] } );
 
 		const resultNoExcerpt = getEditorData( makeEditorDocument() );
 		expect( resultNoExcerpt.excerptOnly ).toBe( "" );
@@ -144,62 +142,5 @@ describe( "getEditorData", () => {
 		expect( result.imageUrl ).toBe( "https://example.com/content.jpg" );
 		expect( result.contentImage ).toBe( "https://example.com/content.jpg" );
 		expect( result.featuredImage ).toBe( "" );
-	} );
-} );
-
-describe( "enrichImageNodes (via getEditorData)", () => {
-	it( "fills htmlCache for an e-image node that is missing it, reading from the preview DOM", () => {
-		const imgOuterHTML = "<img src=\"https://example.com/photo.jpg\" alt=\"Photo\">";
-		const imageNode = { id: "img-1", widgetType: "e-image", elements: [] };
-		getDocumentTree.mockReturnValue( [ imageNode ] );
-
-		const mockImgEl = { outerHTML: imgOuterHTML };
-		const $element = {
-			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-		};
-
-		getEditorData( { $element } );
-
-		expect( walkAtomicTree ).toHaveBeenCalledWith(
-			expect.arrayContaining( [
-				expect.objectContaining( { htmlCache: imgOuterHTML } ),
-			] )
-		);
-	} );
-
-	it( "overwrites an existing htmlCache with the live DOM value", () => {
-		const staleCache = "<img src=\"https://example.com/existing.jpg\" alt=\"old alt\">";
-		const freshOuterHTML = "<img src=\"https://example.com/existing.jpg\" alt=\"new alt\">";
-		const imageNode = { id: "img-1", widgetType: "e-image", htmlCache: staleCache, elements: [] };
-		getDocumentTree.mockReturnValue( [ imageNode ] );
-
-		const mockImgEl = { outerHTML: freshOuterHTML };
-		const $element = {
-			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-		};
-
-		getEditorData( { $element } );
-
-		expect( walkAtomicTree ).toHaveBeenCalledWith(
-			expect.arrayContaining( [
-				expect.objectContaining( { htmlCache: freshOuterHTML } ),
-			] )
-		);
-	} );
-
-	it( "recurses into nested elements to enrich image nodes at any depth", () => {
-		const imgOuterHTML = "<img src=\"https://example.com/deep.jpg\" alt=\"Deep\">";
-		const imageNode = { id: "img-nested", widgetType: "e-image", elements: [] };
-		const tree = [ { id: "container", elType: "e-flexbox", elements: [ imageNode ] } ];
-		getDocumentTree.mockReturnValue( tree );
-
-		const mockImgEl = { outerHTML: imgOuterHTML };
-		const $element = {
-			find: jest.fn().mockReturnValue( { get: jest.fn().mockReturnValue( mockImgEl ) } ),
-		};
-
-		getEditorData( { $element } );
-
-		expect( imageNode.htmlCache ).toBe( imgOuterHTML );
 	} );
 } );
