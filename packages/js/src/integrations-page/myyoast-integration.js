@@ -1,0 +1,423 @@
+/* eslint-disable camelcase */
+import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
+import CheckIcon from "@heroicons/react/solid/CheckIcon";
+import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
+import ExclamationIcon from "@heroicons/react/solid/ExclamationIcon";
+import { dispatch, select, useSelect } from "@wordpress/data";
+import { useCallback, useEffect, useId, useState } from "@wordpress/element";
+import { __, _n, sprintf } from "@wordpress/i18n";
+import { Alert, Button, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
+import PropTypes from "prop-types";
+import { ReactComponent as MyYoastLogo } from "../../images/myyoast-logo.svg";
+import { MyyoastConnectionDisconnectModal } from "./myyoast-disconnect-modal";
+import { MYYOAST_STORE_NAME } from "./myyoast-store";
+import { Card } from "./tailwind-components/card";
+
+// Placeholder until the final MyYoast integrations article URL is provided.
+const LEARN_MORE_LINK = "https://yoa.st/myyoast-connection";
+
+/**
+ * Returns the error and success message map keyed by the machine codes the
+ * backend emits (`error_code` for errors, `message_key` for successes).
+ *
+ * Built lazily inside a function so `__()` is called at call time rather than
+ * at module load — keeps locale switching working.
+ *
+ * @returns {Object<string, string>} The message map.
+ */
+const buildMessages = () => ( {
+	not_provisioned: __( "Your server doesn't support the MyYoast connection. Update Yoast SEO to the latest version. If the issue persists after updating, contact support.", "wordpress-seo" ),
+	registration_gone: __( "MyYoast no longer recognizes this site. Connect this site to MyYoast again to restore the connection.", "wordpress-seo" ),
+	rate_limited: __( "MyYoast has had a lot of connection attempts from this site or network. Please wait a few minutes and try again.", "wordpress-seo" ),
+	server_capability: __( "MyYoast doesn't support a feature this version of Yoast SEO needs. Update Yoast SEO to the latest version. If the issue persists, contact support.", "wordpress-seo" ),
+	myyoast_unreachable: __( "Couldn't reach MyYoast from this server. Check your server's outbound network access, then try again. If MyYoast is having issues, wait a few minutes and retry.", "wordpress-seo" ),
+	token_request_failed_invalid_grant: __( "MyYoast rejected the credentials stored for this site. Disconnect and connect this site again to restore the connection.", "wordpress-seo" ),
+	token_request_failed: __( "Something went wrong while talking to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
+	token_storage_failed: __( "Couldn't save the new credentials on this site. Make sure your WordPress database is writable, then try again.", "wordpress-seo" ),
+	invalid_resource: __( "Something went wrong. Refresh the page and try again. If the problem keeps happening, contact support.", "wordpress-seo" ),
+	registration_failed: __( "Couldn't connect this site to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
+	unknown_redirect_uri: __( "Couldn't verify this site because it's no longer recognized. Refresh the page and try again.", "wordpress-seo" ),
+	invalid_user: __( "You need to be signed in to verify this site.", "wordpress-seo" ),
+	connection_cancelled: __( "Connection cancelled. You can try again whenever you're ready.", "wordpress-seo" ),
+	timeout: __( "Request to MyYoast timed out. Please try again.", "wordpress-seo" ),
+	unexpected_error: __( "Something went wrong. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
+	connect_success: __( "This site is now connected to MyYoast.", "wordpress-seo" ),
+	update_success: __( "Connection updated to match this site's current URL.", "wordpress-seo" ),
+	disconnect_success: __( "This site is no longer connected to MyYoast.", "wordpress-seo" ),
+	verify_success: __( "This site is now verified.", "wordpress-seo" ),
+} );
+
+/**
+ * Formats the rate-limit message in minutes or hours, with the correct
+ * singular/plural form. Sub-minute values round up to one minute.
+ *
+ * @param {number} seconds The retry-after value in seconds.
+ * @returns {string} The localised message.
+ */
+const formatRateLimitedMessage = ( seconds ) => {
+	const minutes = Math.ceil( seconds / 60 );
+	if ( minutes >= 60 ) {
+		const hours = Math.ceil( seconds / 3600 );
+		/* translators: %d is a number of hours. */
+		return sprintf( _n( "MyYoast has had a lot of connection attempts from this site or network. Please wait about %d hour and try again.", "MyYoast has had a lot of connection attempts from this site or network. Please wait about %d hours and try again.", hours, "wordpress-seo" ), hours );
+	}
+	/* translators: %d is a number of minutes. */
+	return sprintf( _n( "MyYoast has had a lot of connection attempts from this site or network. Please wait about %d minute and try again.", "MyYoast has had a lot of connection attempts from this site or network. Please wait about %d minutes and try again.", minutes, "wordpress-seo" ), minutes );
+};
+
+const ACTION_DISPATCHERS = {
+	verify: "verifyMyyoastConnection",
+	connect: "connectMyyoastConnection",
+	update: "updateMyyoastConnection",
+	disconnect: "disconnectMyyoastConnection",
+};
+
+/**
+ * Resolves the user-facing message for a given error code.
+ *
+ * @param {string} code The backend error code.
+ * @param {Object} [details] Extra detail from the backend payload.
+ * @returns {string} The translated message.
+ */
+const resolveErrorMessage = ( code, details ) => {
+	const messages = buildMessages();
+	if ( code === "rate_limited" ) {
+		const seconds = Number( details?.retry_after_seconds );
+		if ( Number.isFinite( seconds ) && seconds > 0 ) {
+			return formatRateLimitedMessage( seconds );
+		}
+	}
+	return messages[ code ] ?? messages.unexpected_error;
+};
+
+/**
+ * Runs a MyYoast management action: dispatches the slice action and, unless
+ * silent, surfaces the outcome as inline card feedback.
+ *
+ * @param {string} actionName The action (verify/connect/update/disconnect).
+ * @param {Object} [body] The request body.
+ * @param {Object} [options] Options.
+ * @param {boolean} [options.silent] When true, suppress feedback.
+ * @param {function} [options.onFeedback] Receives `{ variant, message }` to show in the card.
+ * @returns {Promise<Object>} The slice action's result.
+ */
+// eslint-disable-next-line complexity
+const runAction = async( actionName, body, options ) => {
+	// Serialize actions: they all mutate the same server-side registration, so a
+	// second action started while one is in flight (e.g. the mount-time verify
+	// overlapping a user click) would race on the shared status. Ignore it.
+	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
+		return { ok: false, errorCode: "action_in_flight" };
+	}
+	const store = dispatch( MYYOAST_STORE_NAME );
+	const result = await store[ ACTION_DISPATCHERS[ actionName ] ]( body );
+
+	if ( options?.silent ) {
+		return result;
+	}
+
+	if ( result.ok && result.messageKey ) {
+		const message = buildMessages()[ result.messageKey ];
+		if ( message ) {
+			options?.onFeedback?.( { variant: "success", message } );
+		}
+	} else if ( ! result.ok ) {
+		const message = resolveErrorMessage( result.errorCode, result.details );
+		store.setMyyoastActionError( { actionName, errorCode: result.errorCode, message } );
+		options?.onFeedback?.( { variant: "error", message } );
+	}
+
+	return result;
+};
+
+/**
+ * Starts the verify-site flow: asks the backend for an authorization URL and
+ * navigates the browser there. The backend resolves which registered redirect
+ * URI to use. Errors surface as inline card feedback.
+ *
+ * @param {function} onFeedback Receives `{ variant, message }` to show in the card.
+ * @returns {Promise<void>} Resolves once the navigation has been kicked off.
+ */
+const runAuthorize = async( onFeedback ) => {
+	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
+		return;
+	}
+	const store = dispatch( MYYOAST_STORE_NAME );
+	const result = await store.authorizeMyyoastSite();
+
+	if ( result.ok && result.authorizeUrl ) {
+		window.location.assign( result.authorizeUrl );
+		return;
+	}
+
+	const message = resolveErrorMessage( result.errorCode, result.details );
+	onFeedback?.( { variant: "error", message } );
+};
+
+/**
+ * The footer status line of the card. Mirrors the three registered states from
+ * the design: connected (green check), connection lost (red error icon, URL no
+ * longer matches), and verification needed (amber warning icon, a connected
+ * site still needs an authorization-code flow). Not rendered when the site is
+ * not registered — the footer shows the connect button in that case instead.
+ *
+ * @param {Object} props The component props.
+ * @param {boolean} props.connectionLost Whether the registered URL no longer matches.
+ * @param {boolean} props.verificationNeeded Whether a connected site still needs verification.
+ * @returns {JSX.Element} The status line.
+ */
+const StatusFooter = ( { connectionLost, verificationNeeded } ) => {
+	const svgAriaProps = useSvgAria();
+	const tooltipId = `myyoast-verification-${ useId() }`;
+	const iconClass = "yst-h-5 yst-w-5 yst-flex-shrink-0";
+
+	if ( connectionLost ) {
+		return (
+			<p className="yst-flex yst-items-center yst-justify-between yst-text-slate-700 yst-font-medium">
+				{ __( "Site connection lost", "wordpress-seo" ) }
+				<ExclamationCircleIcon className={ `${ iconClass } yst-text-red-500` } { ...svgAriaProps } />
+			</p>
+		);
+	}
+
+	if ( verificationNeeded ) {
+		return (
+			<p className="yst-flex yst-items-center yst-justify-between yst-text-slate-700 yst-font-medium">
+				{ __( "Site connected", "wordpress-seo" ) }
+				<TooltipContainer>
+					<TooltipTrigger as="span" ariaDescribedby={ tooltipId } className="yst-inline-flex">
+						<ExclamationIcon className={ `${ iconClass } yst-text-amber-500` } { ...svgAriaProps } />
+					</TooltipTrigger>
+					<TooltipWithContext id={ tooltipId } className="yst-max-w-60 yst-z-50 yst-text-center" position="top">
+						{ __( "Sign in to MyYoast to finish setting up this connection so everything works as expected.", "wordpress-seo" ) }
+					</TooltipWithContext>
+				</TooltipContainer>
+			</p>
+		);
+	}
+
+	return (
+		<p className="yst-flex yst-items-center yst-justify-between yst-text-slate-700 yst-font-medium">
+			{ __( "Site connected", "wordpress-seo" ) }
+			<CheckIcon className={ `${ iconClass } yst-text-green-500` } { ...svgAriaProps } />
+		</p>
+	);
+};
+
+StatusFooter.propTypes = {
+	connectionLost: PropTypes.bool.isRequired,
+	verificationNeeded: PropTypes.bool.isRequired,
+};
+
+/**
+ * The MyYoast connection card on the integrations page.
+ *
+ * @returns {JSX.Element} The card element.
+ */
+// eslint-disable-next-line complexity
+export const MyyoastIntegration = () => {
+	const status = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionStatus(), [] );
+	const actionInFlight = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
+	const pendingCallbackOutcome = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
+	const [ feedback, setFeedback ] = useState( null );
+	const [ isDisconnectOpen, , , openDisconnect, closeDisconnect ] = useToggleState( false );
+
+	// Auto-fired verify on mount: confirms with MyYoast that the stored
+	// registration is still valid. Errors are silent; the response refreshes
+	// the local status, so Registration_Not_Found clears state and the card
+	// re-renders as "not connected".
+	useEffect( () => {
+		if ( status.isRegistered ) {
+			runAction( "verify", null, { silent: true } );
+		}
+	}, [] );
+
+	// Surfaces the one-shot feedback stashed by the OAuth callback handler
+	// (success or error). The transient is consumed server-side on read, so
+	// after we've shown it we clear it from the slice to avoid re-firing on
+	// subsequent renders.
+	useEffect( () => {
+		if ( ! pendingCallbackOutcome ) {
+			return;
+		}
+		const { kind, key } = pendingCallbackOutcome;
+		const message = buildMessages()[ key ];
+		if ( message ) {
+			setFeedback( { variant: kind === "success" ? "success" : "error", message } );
+		}
+		dispatch( MYYOAST_STORE_NAME ).clearMyyoastCallbackOutcome();
+	}, [ pendingCallbackOutcome ] );
+
+	// Connecting only registers the site as an OAuth client; the connection is
+	// not usable until one user completes an authorization-code grant. So on a
+	// successful registration we continue straight into that flow, sending the
+	// user to MyYoast to sign in rather than leaving them on the unverified
+	// "Verification needed" state. A failed registration just shows its error.
+	const handleConnect = useCallback( async() => {
+		// Register silently: on success we redirect to MyYoast immediately, so a
+		// transient "connected" message would only flash before the page leaves.
+		// A failure still needs to be shown, so surface only that.
+		const result = await runAction( "connect", null, { silent: true } );
+		if ( ! result.ok ) {
+			const message = resolveErrorMessage( result.errorCode, result.details );
+			setFeedback( { variant: "error", message } );
+			return;
+		}
+		// Registration succeeded; continue straight into the authorization-code
+		// flow. The backend resolves which registered redirect URI to use.
+		await runAuthorize( setFeedback );
+	}, [] );
+	const handleReconnect = useCallback( () => runAction( "update", null, { onFeedback: setFeedback } ), [] );
+	const handleDisconnectConfirm = useCallback( () => {
+		closeDisconnect();
+		runAction( "disconnect", null, { onFeedback: setFeedback } );
+	}, [] );
+
+	const redirectUris = Array.isArray( status.redirectUris ) ? status.redirectUris : [];
+	// "Connection lost" takes precedence over "verification needed": once the
+	// registered URL no longer matches, reconnecting is the only fix and any
+	// unverified-site notice would be premature.
+	const connectionLost = status.isRegistered && status.redirectUrisMatch === false;
+	// Show a single verification notice for the first unverified site, even when
+	// several are connected — verifying them all clears it. Suppressed while the
+	// connection is lost.
+	const firstUnverified = connectionLost ? null : redirectUris.find( ( entry ) => ! entry.isVerified ) ?? null;
+	const verificationNeeded = Boolean( firstUnverified );
+
+	const handleVerify = useCallback( () => {
+		if ( firstUnverified ) {
+			runAuthorize( setFeedback );
+		}
+	}, [ firstUnverified ] );
+
+	return (
+		<>
+			<Card>
+				<Card.Header>
+					<MyYoastLogo className="yst-h-8 yst-w-auto" />
+				</Card.Header>
+				<Card.Content>
+					<div className="yst-flex yst-flex-col yst-gap-4">
+						<h4 className="yst-text-base yst-font-medium yst-text-[#111827] yst-leading-tight">
+							{ "MyYoast" }
+						</h4>
+						<p className="yst-text-slate-600">
+							{ __( "Connect your site to MyYoast to enable AI features, manage your Yoast products, and simplify setup.", "wordpress-seo" ) }
+						</p>
+
+						<a
+							href={ LEARN_MORE_LINK }
+							target="_blank"
+							rel="noopener noreferrer"
+							className="yst-inline-flex yst-items-center yst-gap-1 yst-font-medium yst-text-primary-500 yst-no-underline"
+						>
+							{ __( "Learn more", "wordpress-seo" ) }
+							<ArrowNarrowRightIcon className="yst-h-4 yst-w-4" />
+						</a>
+
+						{ feedback && (
+							<Alert variant={ feedback.variant }>{ feedback.message }</Alert>
+						) }
+
+						{ ! status.isProvisioned && (
+							<Alert variant="warning">
+								{ __( "MyYoast connection is not configured on this build of Yoast SEO. Site features that depend on it are unavailable.", "wordpress-seo" ) }
+							</Alert>
+						) }
+
+						{ status.isProvisioned && status.isRegistered && (
+							<div className="yst-flex yst-flex-col yst-gap-3 yst-pt-2 yst-border-t yst-border-slate-200">
+								<div>
+									<h5 className="yst-font-medium yst-text-slate-900">
+										{ __( "Site connection", "wordpress-seo" ) }
+									</h5>
+									{ redirectUris.length > 0 && (
+										<ul className="yst-mt-1 yst-text-sm yst-text-slate-600 yst-list-none yst-space-y-1">
+											{ redirectUris.map( ( entry ) => (
+												<li key={ entry.uri }>{ entry.origin }</li>
+											) ) }
+										</ul>
+									) }
+								</div>
+								<Button
+									type="button"
+									variant="tertiary"
+									className="yst-self-start yst--mx-3 yst-text-red-600"
+									onClick={ openDisconnect }
+									disabled={ actionInFlight !== null }
+									isLoading={ actionInFlight === "disconnect" }
+								>
+									{ __( "Disconnect", "wordpress-seo" ) }
+								</Button>
+
+								{ connectionLost && (
+									<Alert variant="error">
+										<div className="yst-space-y-2">
+											<p className="yst-font-medium">{ __( "Connection lost", "wordpress-seo" ) }</p>
+											<p>{ __( "Domain connection lost, try to reconnect.", "wordpress-seo" ) }</p>
+											<Button
+												type="button"
+												size="small"
+												variant="tertiary"
+												className="yst--mx-3"
+												onClick={ handleReconnect }
+												disabled={ actionInFlight !== null }
+												isLoading={ actionInFlight === "update" }
+											>
+												{ __( "Reconnect", "wordpress-seo" ) }
+											</Button>
+										</div>
+									</Alert>
+								) }
+
+								{ verificationNeeded && (
+									<Alert variant="warning">
+										<div className="yst-space-y-2">
+											<p className="yst-font-medium">{ __( "Verification needed", "wordpress-seo" ) }</p>
+											<p>{ __( "Sign in to MyYoast to finish setting up this connection.", "wordpress-seo" ) }</p>
+											<Button
+												type="button"
+												size="small"
+												variant="tertiary"
+												className="yst--mx-3"
+												onClick={ handleVerify }
+												disabled={ actionInFlight !== null }
+												isLoading={ actionInFlight === "authorize" }
+											>
+												{ __( "Sign in to MyYoast", "wordpress-seo" ) }
+											</Button>
+										</div>
+									</Alert>
+								) }
+							</div>
+						) }
+					</div>
+				</Card.Content>
+				{ status.isProvisioned && (
+					<Card.Footer>
+						{ status.isRegistered ? (
+							<StatusFooter connectionLost={ connectionLost } verificationNeeded={ verificationNeeded } />
+						) : (
+							<Button
+								type="button"
+								variant="primary"
+								onClick={ handleConnect }
+								disabled={ actionInFlight !== null }
+								isLoading={ actionInFlight === "connect" }
+								className="yst-w-full"
+							>
+								{ __( "Connect your site", "wordpress-seo" ) }
+							</Button>
+						) }
+					</Card.Footer>
+				) }
+			</Card>
+
+			<MyyoastConnectionDisconnectModal
+				isOpen={ isDisconnectOpen }
+				onClose={ closeDisconnect }
+				onConfirm={ handleDisconnectConfirm }
+			/>
+		</>
+	);
+};
