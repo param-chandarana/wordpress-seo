@@ -10,8 +10,8 @@ use Yoast\WP\SEO\AI_Authorization\Application\Token_Manager;
 use Yoast\WP\SEO\AI_Consent\Application\Consent_Handler;
 use Yoast\WP\SEO\AI_HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\Conditionals\AI_Conditional;
-use Yoast\WP\SEO\Loggers\Logger;
 use Yoast\WP\SEO\Conditionals\Old_Premium_AI_Conditional;
+use Yoast\WP\SEO\Loggers\Logger;
 use Yoast\WP\SEO\Main;
 use Yoast\WP\SEO\Routes\Route_Interface;
 
