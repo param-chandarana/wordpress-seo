@@ -116,7 +116,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 	}
 
 	/**
-	 * Filter pinning 'oauth' bypasses the feature-flag check and returns OAuth + Token fallback.
+	 * Filter pinning 'oauth' bypasses the feature-flag check and returns OAuth only, with no fallback.
 	 *
 	 * @covers ::create
 	 *
@@ -129,7 +129,7 @@ final class AI_Request_Sender_Factory_Test extends TestCase {
 		$sender = $this->instance->create( $this->user );
 
 		$this->assertSame( $this->oauth_strategy, $this->getPropertyValue( $sender, 'primary' ) );
-		$this->assertSame( $this->token_strategy, $this->getPropertyValue( $sender, 'fallback' ) );
+		$this->assertNull( $this->getPropertyValue( $sender, 'fallback' ) );
 	}
 
 	/**

@@ -70,11 +70,26 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 	 * @return AI_Request_Sender The configured sender.
 	 */
 	public function create( WP_User $user ): AI_Request_Sender {
-		if ( $this->should_use_oauth( $user ) ) {
-			$sender = new AI_Request_Sender( $this->oauth_strategy, $this->token_strategy );
-		}
-		else {
-			$sender = new AI_Request_Sender( $this->token_strategy );
+		$forced = $this->get_filter_override( $user );
+		switch ( $forced ) {
+			case Auth_Method::OAUTH:
+				$this->logger->debug( 'AI auth: wpseo_ai_auth_method filter pinned oauth.' );
+				$sender = new AI_Request_Sender( $this->oauth_strategy );
+				break;
+			case Auth_Method::TOKEN:
+				$this->logger->debug( 'AI auth: wpseo_ai_auth_method filter pinned token.' );
+				$sender = new AI_Request_Sender( $this->token_strategy );
+				break;
+			default:
+				if ( $this->myyoast_connection_conditional->is_met() ) {
+					$this->logger->debug( 'AI auth: routing to oauth strategy (feature flag on) with a fallback to legacy token auth.' );
+					$sender = new AI_Request_Sender( $this->oauth_strategy, $this->token_strategy );
+				}
+				else {
+					$this->logger->debug( 'AI auth: routing to token strategy (MYYOAST_CONNECTION feature flag is off).' );
+					$sender = new AI_Request_Sender( $this->token_strategy );
+				}
+				break;
 		}
 
 		// Logger_Aware_Pass only auto-wires container-registered services; the sender is hand-built
@@ -82,33 +97,6 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 		$sender->setLogger( $this->logger );
 
 		return $sender;
-	}
-
-	/**
-	 * Whether the OAuth strategy should be the primary for this request.
-	 *
-	 * @param WP_User $user The WP user.
-	 *
-	 * @return bool True to use OAuth (with Token fallback); false to use Token alone.
-	 */
-	private function should_use_oauth( WP_User $user ): bool {
-		$forced = $this->get_filter_override( $user );
-		if ( $forced === Auth_Method::OAUTH ) {
-			$this->logger->debug( 'AI auth: wpseo_ai_auth_method filter pinned oauth.' );
-			return true;
-		}
-		if ( $forced === Auth_Method::TOKEN ) {
-			$this->logger->debug( 'AI auth: wpseo_ai_auth_method filter pinned token.' );
-			return false;
-		}
-
-		if ( ! $this->myyoast_connection_conditional->is_met() ) {
-			$this->logger->debug( 'AI auth: routing to token strategy (MYYOAST_CONNECTION feature flag is off).' );
-			return false;
-		}
-
-		$this->logger->debug( 'AI auth: routing to oauth strategy (feature flag on).' );
-		return true;
 	}
 
 	/**
@@ -122,9 +110,11 @@ class AI_Request_Sender_Factory implements LoggerAwareInterface {
 		/**
 		 * Filter: 'wpseo_ai_auth_method' - Pin a specific AI auth strategy for QA / staged rollout.
 		 *
-		 * Return 'oauth' to force MyYoast OAuth (runtime fallback to the Token strategy on persistent OAuth failure still applies).
+		 * Return 'oauth' to force MyYoast OAuth.
 		 * Return 'token' to force the legacy access_jwt flow.
-		 * Return any other value (including the default null) to let the factory's normal selection logic run.
+		 * Return any other value (including the default null) to let the factory's normal selection logic run:
+		 * If OAuth is available, it will be the primary strategy with a fallback to the legacy token flow.
+		 * If OAuth is unavailable, the legacy token flow will be used exclusively.
 		 *
 		 * @internal
 		 *
