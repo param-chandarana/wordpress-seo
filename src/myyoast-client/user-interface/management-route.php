@@ -5,7 +5,6 @@
 namespace Yoast\WP\SEO\MyYoast_Client\User_Interface;
 
 use Throwable;
-use WP_REST_Request;
 use WP_REST_Response;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\Integrations\Admin\Integrations_Page;
@@ -68,13 +67,6 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	private $issuer_config;
 
 	/**
-	 * The redirect URI builder.
-	 *
-	 * @var OAuth_Redirect_Uri
-	 */
-	private $redirect_uri;
-
-	/**
 	 * The client registration port.
 	 *
 	 * @var Client_Registration_Interface
@@ -87,20 +79,17 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	 * @param MyYoast_Client                $myyoast_client      The MyYoast client facade.
 	 * @param Status_Presenter              $status_presenter    The status presenter.
 	 * @param Issuer_Config                 $issuer_config       The issuer configuration.
-	 * @param OAuth_Redirect_Uri            $redirect_uri        The redirect URI builder.
 	 * @param Client_Registration_Interface $client_registration The client registration port.
 	 */
 	public function __construct(
 		MyYoast_Client $myyoast_client,
 		Status_Presenter $status_presenter,
 		Issuer_Config $issuer_config,
-		OAuth_Redirect_Uri $redirect_uri,
 		Client_Registration_Interface $client_registration
 	) {
 		$this->myyoast_client      = $myyoast_client;
 		$this->status_presenter    = $status_presenter;
 		$this->issuer_config       = $issuer_config;
-		$this->redirect_uri        = $redirect_uri;
 		$this->client_registration = $client_registration;
 		$this->logger              = new NullLogger();
 	}
@@ -176,12 +165,6 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 				'methods'             => 'POST',
 				'callback'            => [ $this, 'authorize' ],
 				'permission_callback' => $permission_callback,
-				'args'                => [
-					'redirect_uri' => [
-						'type'     => 'string',
-						'required' => true,
-					],
-				],
 			],
 		);
 	}
@@ -231,7 +214,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 		}
 
 		try {
-			$this->myyoast_client->ensure_registered( [ $this->redirect_uri->get() ] );
+			$this->myyoast_client->ensure_registered();
 		} catch ( Throwable $e ) {
 			return $this->handle_exception( $e );
 		}
@@ -240,9 +223,11 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	}
 
 	/**
-	 * PUT /myyoast/registration — updates the connection's redirect URIs.
+	 * PUT /myyoast/registration — re-syncs the connection's redirect URIs.
 	 *
-	 * Used to recover the connection after the site's URL has changed.
+	 * Used to recover the connection after the site's URL has changed. The client
+	 * resolves the current redirect URIs itself and updates the registration in
+	 * place (RFC 7592 PUT) when the set differs from what is stored.
 	 *
 	 * @return WP_REST_Response
 	 */
@@ -253,7 +238,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 		}
 
 		try {
-			$this->myyoast_client->update_redirect_uris( [ $this->redirect_uri->get() ] );
+			$this->myyoast_client->ensure_registered();
 		} catch ( Throwable $e ) {
 			return $this->handle_exception( $e );
 		}
@@ -262,31 +247,24 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	}
 
 	/**
-	 * POST /myyoast/authorize — starts the authorization-code flow for the
-	 * given redirect URI and returns the URL the browser should be sent to.
+	 * POST /myyoast/authorize — starts the authorization-code flow and returns
+	 * the URL the browser should be sent to.
 	 *
-	 * Used to verify that a stored redirect URI is reachable and legitimate by
-	 * completing a real auth-code round-trip. The actual marking-as-verified
-	 * happens on the callback side (introduced in #1207).
-	 *
-	 * @param WP_REST_Request $request The REST request.
+	 * Completing the round-trip verifies that the site's redirect URI is
+	 * reachable and that the user is who they claim to be. The client resolves
+	 * the redirect URI itself, and the authorization-code handler marks it
+	 * validated once the returning code is exchanged.
 	 *
 	 * @return WP_REST_Response
 	 */
-	public function authorize( WP_REST_Request $request ): WP_REST_Response {
+	public function authorize(): WP_REST_Response {
 		$gate = $this->require_provisioned();
 		if ( $gate !== null ) {
 			return $gate;
 		}
 
-		$registered_client = $this->client_registration->get_registered_client();
-		if ( $registered_client === null ) {
+		if ( $this->client_registration->get_registered_client() === null ) {
 			return $this->error_response( 'registration_gone' );
-		}
-
-		$redirect_uri = (string) $request->get_param( 'redirect_uri' );
-		if ( ! $this->is_known_redirect_uri( $registered_client->get_metadata(), $redirect_uri ) ) {
-			return $this->error_response( 'unknown_redirect_uri', null, 400 );
 		}
 
 		$user_id = \get_current_user_id();
@@ -299,7 +277,6 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 		try {
 			$authorize_url = $this->myyoast_client->get_authorization_url(
 				$user_id,
-				$redirect_uri,
 				[ 'openid' ],
 				null,
 				$return_url,
@@ -372,27 +349,6 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	private function is_provisioned(): bool {
 		return ( $this->issuer_config->get_software_statement() !== '' )
 			&& ( $this->issuer_config->get_initial_access_token() !== '' );
-	}
-
-	/**
-	 * Whether the supplied URI is among the registered client's redirect URIs.
-	 *
-	 * @param array<string, string|array<string>> $metadata The registered client's metadata.
-	 * @param string                              $uri      The URI to check.
-	 *
-	 * @return bool
-	 */
-	private function is_known_redirect_uri( array $metadata, string $uri ): bool {
-		if ( $uri === '' ) {
-			return false;
-		}
-
-		$stored = ( $metadata['redirect_uris'] ?? [] );
-		if ( ! \is_array( $stored ) ) {
-			return false;
-		}
-
-		return \in_array( $uri, $stored, true );
 	}
 
 	/**

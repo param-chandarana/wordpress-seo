@@ -5,7 +5,6 @@ namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\User_Interface;
 use Brain\Monkey;
 use Exception;
 use Mockery;
-use WP_REST_Request;
 use WP_REST_Response;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Authorization_Flow_Exception;
@@ -21,7 +20,6 @@ use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Client_Registration_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Registered_Client;
 use Yoast\WP\SEO\MyYoast_Client\Infrastructure\OIDC\Issuer_Config;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Management_Route;
-use Yoast\WP\SEO\MyYoast_Client\User_Interface\OAuth_Redirect_Uri;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Status_Presenter;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
@@ -59,13 +57,6 @@ final class Management_Route_Test extends TestCase {
 	private $issuer_config;
 
 	/**
-	 * The OAuth redirect URI builder mock.
-	 *
-	 * @var OAuth_Redirect_Uri|Mockery\MockInterface
-	 */
-	private $redirect_uri;
-
-	/**
 	 * The client registration port mock.
 	 *
 	 * @var Client_Registration_Interface|Mockery\MockInterface
@@ -90,14 +81,12 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client      = Mockery::mock( MyYoast_Client::class );
 		$this->status_presenter    = Mockery::mock( Status_Presenter::class );
 		$this->issuer_config       = Mockery::mock( Issuer_Config::class );
-		$this->redirect_uri        = Mockery::mock( OAuth_Redirect_Uri::class );
 		$this->client_registration = Mockery::mock( Client_Registration_Interface::class );
 
 		$this->instance = new Management_Route(
 			$this->myyoast_client,
 			$this->status_presenter,
 			$this->issuer_config,
-			$this->redirect_uri,
 			$this->client_registration,
 		);
 	}
@@ -348,7 +337,8 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests POST /myyoast/register delegates to ensure_registered with the current redirect URI.
+	 * Tests POST /myyoast/register delegates to ensure_registered, which resolves the
+	 * redirect URIs itself.
 	 *
 	 * @covers ::register
 	 *
@@ -357,11 +347,8 @@ final class Management_Route_Test extends TestCase {
 	public function test_register_delegates_to_ensure_registered() {
 		$this->provision();
 
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( 'https://example.com/wp-admin/admin.php?page=wpseo_dashboard' );
 		$this->myyoast_client->shouldNotReceive( 'deregister' );
-		$this->myyoast_client->shouldReceive( 'ensure_registered' )
-			->once()
-			->with( [ 'https://example.com/wp-admin/admin.php?page=wpseo_dashboard' ] );
+		$this->myyoast_client->shouldReceive( 'ensure_registered' )->once()->withNoArgs();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
@@ -372,7 +359,7 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests PUT /myyoast/registration calls update_redirect_uris with the current URI.
+	 * Tests PUT /myyoast/registration re-syncs the registration via ensure_registered.
 	 *
 	 * @covers ::update_registration
 	 *
@@ -381,10 +368,7 @@ final class Management_Route_Test extends TestCase {
 	public function test_update_registration() {
 		$this->provision();
 
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( 'https://example.com/wp-admin/admin.php?page=wpseo_dashboard' );
-		$this->myyoast_client->shouldReceive( 'update_redirect_uris' )
-			->once()
-			->with( [ 'https://example.com/wp-admin/admin.php?page=wpseo_dashboard' ] );
+		$this->myyoast_client->shouldReceive( 'ensure_registered' )->once()->withNoArgs();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
@@ -405,8 +389,7 @@ final class Management_Route_Test extends TestCase {
 	public function test_update_registration_handles_registration_gone() {
 		$this->provision();
 
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( 'https://example.com/uri' );
-		$this->myyoast_client->shouldReceive( 'update_redirect_uris' )
+		$this->myyoast_client->shouldReceive( 'ensure_registered' )
 			->once()
 			->andThrow( new Registration_Not_Found_Exception( 'gone' ) );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
@@ -500,16 +483,13 @@ final class Management_Route_Test extends TestCase {
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		$this->myyoast_client->shouldNotReceive( 'ensure_registered' );
-		$this->myyoast_client->shouldNotReceive( 'update_redirect_uris' );
 		$this->myyoast_client->shouldNotReceive( 'get_authorization_url' );
-
-		$request = Mockery::mock( WP_REST_Request::class );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
 		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->register() );
 		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->update_registration() );
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $request ) );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
 	}
 
 	/**
@@ -550,17 +530,15 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests authorize returns the authorization URL for a known redirect URI.
+	 * Tests authorize returns the authorization URL when the site is registered.
 	 *
 	 * @covers ::authorize
-	 * @covers ::is_known_redirect_uri
 	 *
 	 * @return void
 	 */
 	public function test_authorize_returns_authorization_url() {
 		$this->provision();
 
-		$target_uri    = 'https://example.com/wp-admin/admin-post.php?action=yoast_myyoast_oauth_callback';
 		$return_url    = 'https://example.com/wp-admin/admin.php?page=wpseo_integrations';
 		$authorize_url = 'https://my.yoast.com/auth?code_challenge=abc';
 
@@ -570,7 +548,7 @@ final class Management_Route_Test extends TestCase {
 					'client-123',
 					'rat',
 					'https://my.yoast.com/clients/client-123',
-					[ 'redirect_uris' => [ $target_uri ] ],
+					[ 'redirect_uris' => [ 'https://example.com/cb' ] ],
 				),
 			);
 
@@ -578,56 +556,20 @@ final class Management_Route_Test extends TestCase {
 
 		Monkey\Functions\expect( 'admin_url' )
 			->with( 'admin.php?page=wpseo_integrations' )
-			->andReturn( 'https://example.com/wp-admin/admin.php?page=wpseo_integrations' );
+			->andReturn( $return_url );
 
 		$this->myyoast_client->shouldReceive( 'get_authorization_url' )
 			->once()
-			->with( 42, $target_uri, [ 'openid' ], null, $return_url )
+			->with( 42, [ 'openid' ], null, $return_url )
 			->andReturn( $authorize_url );
 
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
-		$request = Mockery::mock( WP_REST_Request::class );
-		$request->shouldReceive( 'get_param' )->with( 'redirect_uri' )->andReturn( $target_uri );
-
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$response = $this->instance->authorize( $request );
+		$response = $this->instance->authorize();
 
 		$this->assertInstanceOf( WP_REST_Response::class, $response );
-	}
-
-	/**
-	 * Tests authorize rejects an unknown redirect URI.
-	 *
-	 * @covers ::authorize
-	 * @covers ::is_known_redirect_uri
-	 *
-	 * @return void
-	 */
-	public function test_authorize_rejects_unknown_redirect_uri() {
-		$this->provision();
-
-		$this->client_registration->shouldReceive( 'get_registered_client' )
-			->andReturn(
-				new Registered_Client(
-					'client-123',
-					'rat',
-					'https://my.yoast.com/clients/client-123',
-					[ 'redirect_uris' => [ 'https://example.com/known' ] ],
-				),
-			);
-
-		$this->myyoast_client->shouldNotReceive( 'get_authorization_url' );
-
-		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
-
-		$request = Mockery::mock( WP_REST_Request::class );
-		$request->shouldReceive( 'get_param' )->with( 'redirect_uri' )->andReturn( 'https://attacker.example/evil' );
-
-		Mockery::mock( 'overload:' . WP_REST_Response::class );
-
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $request ) );
 	}
 
 	/**
@@ -644,11 +586,9 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client->shouldNotReceive( 'get_authorization_url' );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
-		$request = Mockery::mock( WP_REST_Request::class );
-
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $request ) );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
 	}
 
 	/**
@@ -661,15 +601,13 @@ final class Management_Route_Test extends TestCase {
 	public function test_authorize_handles_flow_exception() {
 		$this->provision();
 
-		$target_uri = 'https://example.com/known';
-
 		$this->client_registration->shouldReceive( 'get_registered_client' )
 			->andReturn(
 				new Registered_Client(
 					'client-123',
 					'rat',
 					'https://my.yoast.com/clients/client-123',
-					[ 'redirect_uris' => [ $target_uri ] ],
+					[ 'redirect_uris' => [ 'https://example.com/cb' ] ],
 				),
 			);
 
@@ -684,11 +622,8 @@ final class Management_Route_Test extends TestCase {
 
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
-		$request = Mockery::mock( WP_REST_Request::class );
-		$request->shouldReceive( 'get_param' )->with( 'redirect_uri' )->andReturn( $target_uri );
-
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $request ) );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
 	}
 }

@@ -5,11 +5,12 @@
 namespace Yoast\WP\SEO\MyYoast_Client\User_Interface;
 
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Client_Registration_Interface;
+use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Redirect_URI_Provider_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Registered_Client;
 use Yoast\WP\SEO\MyYoast_Client\Infrastructure\OIDC\Issuer_Config;
 
 /**
- * Builds the status payload surfaced on the "MyYoast connection" settings page.
+ * Builds the status payload surfaced on the MyYoast connection card on the integrations page.
  *
  * Intentionally narrow: registration state, registration date, and the
  * stored redirect URIs with their verification state. Software statement,
@@ -32,27 +33,27 @@ class Status_Presenter {
 	private $issuer_config;
 
 	/**
-	 * The OAuth redirect URI builder.
+	 * The redirect URI provider.
 	 *
-	 * @var OAuth_Redirect_Uri
+	 * @var Redirect_URI_Provider_Interface
 	 */
-	private $redirect_uri;
+	private $redirect_uri_provider;
 
 	/**
 	 * Status_Presenter constructor.
 	 *
-	 * @param Client_Registration_Interface $client_registration The client registration port.
-	 * @param Issuer_Config                 $issuer_config       The issuer configuration.
-	 * @param OAuth_Redirect_Uri            $redirect_uri        The OAuth redirect URI builder.
+	 * @param Client_Registration_Interface   $client_registration   The client registration port.
+	 * @param Issuer_Config                   $issuer_config         The issuer configuration.
+	 * @param Redirect_URI_Provider_Interface $redirect_uri_provider The redirect URI provider.
 	 */
 	public function __construct(
 		Client_Registration_Interface $client_registration,
 		Issuer_Config $issuer_config,
-		OAuth_Redirect_Uri $redirect_uri
+		Redirect_URI_Provider_Interface $redirect_uri_provider
 	) {
-		$this->client_registration = $client_registration;
-		$this->issuer_config       = $issuer_config;
-		$this->redirect_uri        = $redirect_uri;
+		$this->client_registration   = $client_registration;
+		$this->issuer_config         = $issuer_config;
+		$this->redirect_uri_provider = $redirect_uri_provider;
 	}
 
 	/**
@@ -112,47 +113,33 @@ class Status_Presenter {
 	}
 
 	/**
-	 * Whether the currently-computed redirect URI is among the stored ones.
+	 * Whether the registration's redirect URIs still match what this site would register today.
 	 *
-	 * Compares the full URI — a mismatch means the site's URL has changed
-	 * since it was connected, and the registration needs updating.
+	 * A mismatch means the site's URL has changed since it was connected, and the
+	 * registration needs re-syncing.
 	 *
 	 * @param Registered_Client $client The registered client.
 	 *
 	 * @return bool
 	 */
 	private function redirect_uris_match( Registered_Client $client ): bool {
-		$metadata = $client->get_metadata();
-		$stored   = ( $metadata['redirect_uris'] ?? [] );
-		if ( ! \is_array( $stored ) ) {
-			return false;
-		}
-
-		return \in_array( $this->redirect_uri->get(), $stored, true );
+		return $client->has_redirect_uris( $this->redirect_uri_provider->get_redirect_uris() );
 	}
 
 	/**
 	 * Returns the stored redirect URIs annotated with their origin (scheme +
 	 * host + optional port) and their verification state.
 	 *
-	 * Verification state is hardcoded to `false` for now: issue #1207 introduces
-	 * the verified-site concept along with the helpers that decide which URIs
-	 * have completed an authorization code flow. Replace this once #1207 lands
-	 * on trunk.
+	 * A URI is verified once a user has completed the authorization-code flow for
+	 * it on this site; that state is tracked on the registration.
 	 *
 	 * @param Registered_Client $client The registered client.
 	 *
 	 * @return array<int, array{uri: string, origin: string, is_verified: bool}>
 	 */
 	private function extract_redirect_uris( Registered_Client $client ): array {
-		$metadata = $client->get_metadata();
-		$uris     = ( $metadata['redirect_uris'] ?? [] );
-		if ( ! \is_array( $uris ) ) {
-			return [];
-		}
-
 		$result = [];
-		foreach ( $uris as $uri ) {
+		foreach ( $client->get_redirect_uris() as $uri ) {
 			if ( ! \is_string( $uri ) || $uri === '' ) {
 				continue;
 			}
@@ -165,7 +152,7 @@ class Status_Presenter {
 			$result[] = [
 				'uri'         => $uri,
 				'origin'      => $origin,
-				'is_verified' => $this->is_uri_verified( $uri ),
+				'is_verified' => $client->is_uri_validated( $uri ),
 			];
 		}
 
@@ -191,21 +178,5 @@ class Status_Presenter {
 		}
 
 		return $origin;
-	}
-
-	/**
-	 * Whether the given redirect URI has been verified by completing an
-	 * authorization code flow.
-	 *
-	 * TODO: replace stub once #1207 (Yoast AI requests authenticated via
-	 * MyYoast OAuth tokens) lands on trunk — it introduces the verified-site
-	 * concept and the helper to check it.
-	 *
-	 * @param string $uri The redirect URI to check.
-	 *
-	 * @return bool
-	 */
-	private function is_uri_verified( string $uri ): bool { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found,VariableAnalysis.CodeAnalysis.VariableAnalysis.UnusedVariable -- Stub ignores $uri until #1207 adds the verified-site helper.
-		return false;
 	}
 }

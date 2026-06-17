@@ -5,9 +5,9 @@ namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\User_Interface;
 use Brain\Monkey;
 use Mockery;
 use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Client_Registration_Interface;
+use Yoast\WP\SEO\MyYoast_Client\Application\Ports\Redirect_URI_Provider_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Domain\Registered_Client;
 use Yoast\WP\SEO\MyYoast_Client\Infrastructure\OIDC\Issuer_Config;
-use Yoast\WP\SEO\MyYoast_Client\User_Interface\OAuth_Redirect_Uri;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Status_Presenter;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
 
@@ -35,11 +35,11 @@ final class Status_Presenter_Test extends TestCase {
 	private $issuer_config;
 
 	/**
-	 * The OAuth redirect URI builder mock.
+	 * The redirect URI provider mock.
 	 *
-	 * @var OAuth_Redirect_Uri|Mockery\MockInterface
+	 * @var Redirect_URI_Provider_Interface|Mockery\MockInterface
 	 */
-	private $redirect_uri;
+	private $redirect_uri_provider;
 
 	/**
 	 * The instance under test.
@@ -56,14 +56,14 @@ final class Status_Presenter_Test extends TestCase {
 	protected function set_up() {
 		parent::set_up();
 
-		$this->client_registration = Mockery::mock( Client_Registration_Interface::class );
-		$this->issuer_config       = Mockery::mock( Issuer_Config::class );
-		$this->redirect_uri        = Mockery::mock( OAuth_Redirect_Uri::class );
+		$this->client_registration   = Mockery::mock( Client_Registration_Interface::class );
+		$this->issuer_config         = Mockery::mock( Issuer_Config::class );
+		$this->redirect_uri_provider = Mockery::mock( Redirect_URI_Provider_Interface::class );
 
 		$this->instance = new Status_Presenter(
 			$this->client_registration,
 			$this->issuer_config,
-			$this->redirect_uri,
+			$this->redirect_uri_provider,
 		);
 
 		Monkey\Functions\stubs(
@@ -127,7 +127,6 @@ final class Status_Presenter_Test extends TestCase {
 	 * @covers ::extract_registered_at
 	 * @covers ::extract_redirect_uris
 	 * @covers ::extract_origin
-	 * @covers ::is_uri_verified
 	 * @covers ::redirect_uris_match
 	 *
 	 * @return void
@@ -135,9 +134,13 @@ final class Status_Presenter_Test extends TestCase {
 	public function test_present_when_registered_with_matching_uri() {
 		$this->issuer_config->shouldReceive( 'get_software_statement' )->andReturn( 'jwt' );
 		$this->issuer_config->shouldReceive( 'get_initial_access_token' )->andReturn( 'iat' );
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( self::CURRENT_REDIRECT_URI );
 
-		$staging_uri       = 'https://staging.example.com/wp-admin/admin.php?page=wpseo_dashboard';
+		$staging_uri = 'https://staging.example.com/wp-admin/admin.php?page=wpseo_dashboard';
+		$this->redirect_uri_provider
+			->shouldReceive( 'get_redirect_uris' )
+			->andReturn( [ self::CURRENT_REDIRECT_URI, $staging_uri ] );
+
+		// The current URI has completed an authorization-code flow; the staging one has not.
 		$registered_client = new Registered_Client(
 			'client-123',
 			'rat',
@@ -149,6 +152,7 @@ final class Status_Presenter_Test extends TestCase {
 					$staging_uri,
 				],
 			],
+			[ self::CURRENT_REDIRECT_URI ],
 		);
 
 		$this->client_registration->shouldReceive( 'get_registered_client' )->andReturn( $registered_client );
@@ -164,7 +168,7 @@ final class Status_Presenter_Test extends TestCase {
 				[
 					'uri'         => self::CURRENT_REDIRECT_URI,
 					'origin'      => 'https://example.com',
-					'is_verified' => false,
+					'is_verified' => true,
 				],
 				[
 					'uri'         => $staging_uri,
@@ -189,7 +193,9 @@ final class Status_Presenter_Test extends TestCase {
 	public function test_present_when_registered_with_drifted_uri() {
 		$this->issuer_config->shouldReceive( 'get_software_statement' )->andReturn( 'jwt' );
 		$this->issuer_config->shouldReceive( 'get_initial_access_token' )->andReturn( 'iat' );
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( 'https://new-domain.example.com/wp-admin/admin.php?page=wpseo_dashboard&yoast_myyoast_oauth_callback=1' );
+		$this->redirect_uri_provider
+			->shouldReceive( 'get_redirect_uris' )
+			->andReturn( [ 'https://new-domain.example.com/wp-admin/admin.php?page=wpseo_dashboard&yoast_myyoast_oauth_callback=1' ] );
 
 		$registered_client = new Registered_Client(
 			'client-123',
@@ -218,7 +224,9 @@ final class Status_Presenter_Test extends TestCase {
 	public function test_present_when_registered_without_issued_at() {
 		$this->issuer_config->shouldReceive( 'get_software_statement' )->andReturn( 'jwt' );
 		$this->issuer_config->shouldReceive( 'get_initial_access_token' )->andReturn( 'iat' );
-		$this->redirect_uri->shouldReceive( 'get' )->andReturn( self::CURRENT_REDIRECT_URI );
+		$this->redirect_uri_provider
+			->shouldReceive( 'get_redirect_uris' )
+			->andReturn( [ self::CURRENT_REDIRECT_URI ] );
 
 		$registered_client = new Registered_Client(
 			'client-123',
