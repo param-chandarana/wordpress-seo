@@ -135,22 +135,22 @@ export const AiConsent = ( {
 						{ checkboxLabel }
 					</label>
 				</div>
+				{ error &&
+					<GenericAlert className="yst-mt-3" linkStoreName={ linkStoreName } />
+				}
 				<div className="yst-w-full yst-flex yst-mt-4">
-					{ error
-						? <GenericAlert linkStoreName={ linkStoreName } />
-						: <Button
-							as="button"
-							className="yst-grow"
-							size="large"
-							disabled={ ! consent }
-							onClick={ handleConsentChange }
-						>
-							{ loading && (
-								<Spinner className="yst-me-2" />
-							) }
-							{ __( "Grant consent", "wordpress-seo" ) }
-						</Button>
-					}
+					<Button
+						as="button"
+						className="yst-grow"
+						size="large"
+						disabled={ ! consent || error }
+						onClick={ handleConsentChange }
+					>
+						{ loading && ! error && (
+							<Spinner className="yst-me-2" />
+						) }
+						{ __( "Grant consent", "wordpress-seo" ) }
+					</Button>
 				</div>
 				<Button
 					as="button"
