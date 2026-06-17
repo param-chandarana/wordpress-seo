@@ -32,6 +32,7 @@ export const link = {
 		url: "href",
 		type: "data-type",
 		id: "data-id",
+		// _id matches WP core: reads the HTML id attribute on anchors but is never written by our link format.
 		_id: "id",
 		target: "target",
 		rel: "rel",
