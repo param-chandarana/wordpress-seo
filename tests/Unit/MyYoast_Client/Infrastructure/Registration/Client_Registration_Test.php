@@ -522,6 +522,28 @@ final class Client_Registration_Test extends TestCase {
 	}
 
 	/**
+	 * Tests that ensure_registered throws when not registered and no redirect URIs are given,
+	 * so a token/auth flow can never silently register an empty client.
+	 *
+	 * @covers ::ensure_registered
+	 *
+	 * @return void
+	 */
+	public function test_ensure_registered_throws_when_not_registered_and_no_uris() {
+		Functions\expect( 'get_option' )
+			->with( self::OPTION_KEY, false )
+			->andReturn( false );
+
+		$this->http_client->expects( 'request' )->never();
+		$this->http_client->expects( 'authenticated_request' )->never();
+
+		$this->expectException( Registration_Failed_Exception::class );
+		$this->expectExceptionMessage( 'At least one redirect URI is required' );
+
+		$this->instance->ensure_registered( [] );
+	}
+
+	/**
 	 * Tests that ensure_registered updates the registration in place (RFC 7592 PUT, no
 	 * deregister/re-register) when the redirect-URI set differs, preserving the client_id and
 	 * pruning the validated URIs to the new set.
@@ -590,6 +612,70 @@ final class Client_Registration_Test extends TestCase {
 	}
 
 	/**
+	 * Tests that store_credentials resets validated_uris when the server returns a different
+	 * client_id, since a new client must re-validate every redirect URI from scratch.
+	 *
+	 * @covers ::store_credentials
+	 *
+	 * @return void
+	 */
+	public function test_store_credentials_resets_validated_uris_for_a_new_client_id() {
+		// Registered as "old-cid" with A validated.
+		Functions\expect( 'get_option' )
+			->with( self::OPTION_KEY, Mockery::any() )
+			->andReturn(
+				[
+					'client_id'               => 'old-cid',
+					'encrypted_rat'           => 'encrypted-rat',
+					'registration_client_uri' => 'https://my.yoast.com/api/oauth/reg/old-cid',
+					'metadata'                => [ 'redirect_uris' => [ 'https://a.example/cb' ] ],
+					'validated_uris'          => [ 'https://a.example/cb' ],
+				],
+			);
+
+		$this->encryption->allows( 'decrypt' )->andReturn( 'decrypted-rat' );
+		$this->encryption->allows( 'encrypt' )->andReturn( 'encrypted-rat' );
+		$this->issuer_config->expects( 'get_software_statement' )->andReturn( 'fresh-ss-jwt' );
+		Functions\expect( 'wp_json_encode' )->andReturn( '{}' );
+
+		// The server responds with a different client_id and the same redirect URI.
+		$this->http_client
+			->expects( 'authenticated_request' )
+			->once()
+			->andReturn(
+				new HTTP_Response(
+					200,
+					[],
+					[
+						'client_id'                 => 'new-cid',
+						'registration_access_token' => 'rat',
+						'registration_client_uri'   => 'https://my.yoast.com/api/oauth/reg/new-cid',
+						'redirect_uris'             => [ 'https://a.example/cb' ],
+					],
+				),
+			);
+
+		// A was validated under the old client_id, but the new client_id resets all verification.
+		Functions\expect( 'update_option' )
+			->once()
+			->with(
+				self::OPTION_KEY,
+				Mockery::on(
+					static function ( $option ) {
+						return ( $option['validated_uris'] ?? null ) === [];
+					},
+				),
+				false,
+			)
+			->andReturn( true );
+
+		$result = $this->instance->ensure_registered( [ 'https://b.example/cb' ] );
+
+		$this->assertSame( 'new-cid', $result->get_client_id() );
+		$this->assertSame( [], $result->get_validated_uris() );
+	}
+
+	/**
 	 * Tests that mark_uri_validated appends the redirect URI to the stored registration.
 	 *
 	 * @covers ::mark_uri_validated
@@ -623,6 +709,34 @@ final class Client_Registration_Test extends TestCase {
 				false,
 			)
 			->andReturn( true );
+
+		$this->instance->mark_uri_validated( 'https://example.com/callback' );
+	}
+
+	/**
+	 * Tests that mark_uri_validated is idempotent: re-marking an already-validated URI does not
+	 * persist a duplicate.
+	 *
+	 * @covers ::mark_uri_validated
+	 *
+	 * @return void
+	 */
+	public function test_mark_uri_validated_is_idempotent() {
+		Functions\expect( 'get_option' )
+			->with( self::OPTION_KEY, false )
+			->andReturn(
+				[
+					'client_id'               => 'cid',
+					'encrypted_rat'           => 'encrypted-rat',
+					'registration_client_uri' => 'https://my.yoast.com/api/oauth/reg/cid',
+					'metadata'                => [],
+					'validated_uris'          => [ 'https://example.com/callback' ],
+				],
+			);
+
+		$this->encryption->expects( 'decrypt' )->andReturn( 'decrypted-rat' );
+
+		Functions\expect( 'update_option' )->never();
 
 		$this->instance->mark_uri_validated( 'https://example.com/callback' );
 	}

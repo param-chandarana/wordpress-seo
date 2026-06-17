@@ -92,7 +92,7 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->redirect_uri_provider = Mockery::mock( Redirect_URI_Provider_Interface::class );
 
 		$this->redirect_uri_provider->allows( 'get_redirect_uris' )->andReturn( [ 'https://example.com/callback' ] );
-		$this->redirect_uri_provider->allows( 'get_authorization_redirect_uri' )->andReturn( 'https://example.com/callback' );
+		$this->redirect_uri_provider->allows( 'get_authorization_redirect_uri' )->andReturn( 'https://example.com/callback' )->byDefault();
 
 		$this->instance = new Authorization_Code_Handler(
 			$this->discovery,
@@ -139,6 +139,40 @@ final class Authorization_Code_Handler_Test extends TestCase {
 		$this->assertStringContainsString( 'state=', $url );
 		$this->assertStringNotContainsString( 'nonce=', $url );
 		$this->assertStringNotContainsString( 'resource=', $url );
+	}
+
+	/**
+	 * Tests that get_authorization_url embeds the redirect URI resolved by the provider from the
+	 * registered client.
+	 *
+	 * @covers ::get_authorization_url
+	 *
+	 * @return void
+	 */
+	public function test_get_authorization_url_embeds_provider_resolved_redirect_uri() {
+		$registered_client = new Registered_Client( 'client-123', 'rat', 'https://my.yoast.com/reg/client-123' );
+
+		$this->client_registration
+			->expects( 'get_registered_client' )
+			->andReturn( $registered_client );
+
+		// Override the blanket set_up stub: assert the provider receives the registered client and
+		// flow context, and that its returned URI is the one embedded in the authorization URL.
+		$this->redirect_uri_provider
+			->expects( 'get_authorization_redirect_uri' )
+			->once()
+			->with( $registered_client, 1, [ 'profile' ], Mockery::type( Resource_Indicator::class ), null )
+			->andReturn( 'https://proxy.example/cb' );
+
+		$this->discovery
+			->expects( 'get_document' )
+			->andReturn( new Discovery_Document( $this->get_valid_discovery_response() ) );
+
+		$this->expiring_store->expects( 'persist_for_user' )->once();
+
+		$url = $this->instance->get_authorization_url( 1, [ 'profile' ], Resource_Indicator::default() );
+
+		$this->assertStringContainsString( 'redirect_uri=' . \rawurlencode( 'https://proxy.example/cb' ), $url );
 	}
 
 	/**
