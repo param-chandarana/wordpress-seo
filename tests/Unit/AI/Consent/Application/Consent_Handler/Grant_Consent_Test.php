@@ -5,6 +5,7 @@
 namespace Yoast\WP\SEO\Tests\Unit\AI\Consent\Application\Consent_Handler;
 
 use Mockery;
+use RuntimeException;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Internal_Server_Error_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
@@ -17,6 +18,25 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
  * @covers \Yoast\WP\SEO\AI\Consent\Application\Consent_Handler::grant_consent
  */
 final class Grant_Consent_Test extends Abstract_Consent_Handler_Test {
+
+	/**
+	 * Tests that grant_consent throws a RuntimeException when the user is not found, and does not
+	 * touch the token manager, request handler, or local meta.
+	 *
+	 * @return void
+	 */
+	public function test_grant_consent_throws_if_user_not_found() {
+		$user_id = 1;
+		$this->stub_get_user_by_not_found( $user_id );
+
+		$this->token_manager->shouldNotReceive( 'get_or_request_access_token' );
+		$this->request_handler->shouldNotReceive( 'handle' );
+		$this->user_helper->shouldNotReceive( 'update_meta' );
+
+		$this->expectException( RuntimeException::class );
+
+		$this->instance->grant_consent( $user_id );
+	}
 
 	/**
 	 * Tests granting the consent on the happy path: token fetched, POST succeeds, local meta updated.

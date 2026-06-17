@@ -21,6 +21,25 @@ use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 final class Revoke_Consent_Test extends Abstract_Consent_Handler_Test {
 
 	/**
+	 * Tests that revoke_consent throws a RuntimeException when the user is not found, and does not
+	 * touch the local meta, token manager, or request handler.
+	 *
+	 * @return void
+	 */
+	public function test_revoke_consent_throws_if_user_not_found() {
+		$user_id = 1;
+		$this->stub_get_user_by_not_found( $user_id );
+
+		$this->user_helper->shouldNotReceive( 'delete_meta' );
+		$this->token_manager->shouldNotReceive( 'get_or_request_access_token' );
+		$this->request_handler->shouldNotReceive( 'handle' );
+
+		$this->expectException( RuntimeException::class );
+
+		$this->instance->revoke_consent( $user_id );
+	}
+
+	/**
 	 * Tests revoking the consent on the happy path: local meta deleted first, then token fetched and
 	 * DELETE succeeds.
 	 *

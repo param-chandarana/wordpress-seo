@@ -85,4 +85,18 @@ abstract class Abstract_Consent_Handler_Test extends TestCase {
 
 		return $user;
 	}
+
+	/**
+	 * Stubs WordPress's `get_user_by( 'id', $user_id )` to return `false` (user not found).
+	 *
+	 * @param int $user_id The user ID to look up.
+	 *
+	 * @return void
+	 */
+	protected function stub_get_user_by_not_found( int $user_id ) {
+		Monkey\Functions\expect( 'get_user_by' )
+			->once()
+			->with( 'id', $user_id )
+			->andReturn( false );
+	}
 }
