@@ -137,6 +137,8 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 				->with( $user_id )
 				->andThrow( $bad_request );
 
+			$this->logger->expects( 'error' )->once();
+
 			$wp_rest_response
 				->expects( '__construct' )
 				->with( 'Failed to give consent.', 500 )
@@ -148,6 +150,8 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 				->once()
 				->with( $user_id )
 				->andThrow( $bad_request );
+
+			$this->logger->expects( 'error' )->once();
 
 			$wp_rest_response
 				->expects( '__construct' )
