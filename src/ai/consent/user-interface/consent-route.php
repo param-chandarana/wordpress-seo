@@ -128,8 +128,9 @@ class Consent_Route implements Route_Interface {
 				$this->consent_handler->revoke_consent( $user_id );
 			}
 		} catch ( Remote_Request_Exception | RuntimeException $e ) {
+			$status_code = ( $e instanceof Remote_Request_Exception ) ? $e->getCode() : 500;
 			$this->logger->error( $e->getMessage(), [ 'exception' => $e ] );
-			return new WP_REST_Response( ( $consent ) ? 'Failed to give consent.' : 'Failed to revoke consent.', 500 );
+			return new WP_REST_Response( ( $consent ) ? 'Failed to give consent.' : 'Failed to revoke consent.', $status_code );
 		}
 
 		return new WP_REST_Response( ( $consent ) ? 'Consent successfully given.' : 'Consent successfully revoked.' );
