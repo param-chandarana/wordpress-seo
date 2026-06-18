@@ -1,10 +1,10 @@
 /**
  * @file Reads rendered widget HTML from the Elementor V4 preview DOM and builds the
- *       analyser content plus a per-widget position map in a single pass.
+ *       analyzer content plus a per-widget position map in a single pass.
  *
- *       Unlike the previous JSON-reconstruction approach, this includes every widget's
+ *       This approach is used instead of reconstructing JSON because this approach includes every widget's
  *       rendered HTML (classes intact) and leaves the decision of what to exclude to
- *       yoastseo's `alwaysFilterElements`. Because the analyser computes mark positions
+ *       yoastseo package's `alwaysFilterElements`. Because the analyzer computes mark positions
  *       against the original (pre-filter) HTML, the offsets recorded here stay aligned
  *       with the marks even after the parser strips unwanted widgets.
  */
@@ -13,8 +13,8 @@
  * @typedef {Object} WidgetEntry
  * @property {string} id         Widget node ID (matches `data-id` / `data-interaction-id`).
  * @property {string} widgetType The widget type (e.g. "e-heading", "table-of-contents").
- * @property {number} start      Start offset in the normalised concatenated content string.
- * @property {number} end        End offset (exclusive) in the normalised concatenated content string.
+ * @property {number} start      Start offset in the normalized concatenated content string.
+ * @property {number} end        End offset (exclusive) in the normalized concatenated content string.
  */
 
 // Editor-only chrome rendered inside classic widget wrappers; never part of the content.
@@ -23,9 +23,9 @@ const CHROME_SELECTOR = ".elementor-element-overlay, .elementor-background-overl
 /**
  * Converts a Backbone Collection to a plain array via its toJSON() method. model.toJSON()
  * does a shallow clone, so nested `elements` stay as Backbone Collections; this is called at
- * every level so `Array.isArray` always passes for the level being walked.
+ * every level, so `Array.isArray` always passes for the level being walked.
  *
- * @param {*} nodes The value to normalise.
+ * @param {*} nodes The value to normalize.
  * @returns {*} A plain array if nodes had toJSON(), otherwise the original value unchanged.
  */
 function toPlainNodes( nodes ) {
@@ -33,9 +33,9 @@ function toPlainNodes( nodes ) {
 }
 
 /**
- * Finds the rendered DOM element for a widget node in the live preview. Atomic widgets
- * carry `data-interaction-id` on the semantic tag itself; classic widgets carry `data-id`
- * on the `.elementor-element` wrapper. Both are matched in one selector.
+ * Finds the rendered DOM element for a widget node in the live preview. Widgets are matched by
+ * either `data-id` (on the `.elementor-element` wrapper) or `data-interaction-id` (set by atomic
+ * widgets); both are matched in one selector and the outermost match wins.
  *
  * @param {Object} node     A document tree node with an `id`.
  * @param {Object} $element The current document's preview jQuery element.
@@ -46,10 +46,11 @@ function findWidgetElement( node, $element ) {
 }
 
 /**
- * Returns the rendered HTML for a single widget element. Atomic widgets are bare semantic
- * tags, so their `outerHTML` is the content as-is. Classic widgets wrap their content in an
- * `.elementor-element` div alongside editor chrome (overlays, resize handles), which is
- * stripped from a clone before serialising so it never reaches the analysis.
+ * Returns the rendered HTML for a single widget element. When the matched element is an
+ * `.elementor-element` wrapper it carries editor chrome (overlays, resize handles), which is
+ * stripped from a clone before serializing so it never reaches the analysis. An element that is
+ * not a wrapper (e.g. an atomic widget's bare tag matched by `data-interaction-id`) is returned
+ * as-is.
  *
  * @param {Element} el The widget DOM element.
  * @returns {string} The widget's content HTML.

@@ -5,10 +5,10 @@ import { buildContentAndMap } from "./content-walker";
 import { getDocumentTree } from "./document-tree";
 
 /**
- * Clears the active marker so the analyser recomputes marks on the next pass.
+ * Clears the active marker and removes any existing highlight marks.
  *
- * Atomic widgets render as bare semantic tags without a reusable inner container,
- * so we cannot strip `<yoastmark>` spans by mutating innerHTML.
+ * Dispatching an empty Paper through `applyMarks` lets the registered Elementor mark
+ * applicator strip the `<yoastmark>` spans it previously wrote into the preview DOM.
  *
  * @returns {void}
  */
@@ -22,7 +22,7 @@ function resetMarks() {
 /**
  * Returns per-widget position metadata for the current Elementor document.
  *
- * Each entry maps a widget node ID to its range in the normalised analysis
+ * Each entry maps a widget node ID to its range in the normalized analysis
  * content string, so premium's mark applicator can apply marks at the correct
  * local offset without re-implementing the tree walk.
  *

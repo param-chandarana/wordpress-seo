@@ -1,8 +1,8 @@
 /**
- * Tries to extract the elements array from the live container model.
+ * Tries to extract the array of elements from the live container model.
  *
  * @param {Object} currentDocument The Elementor document.
- * @returns {Array|null} The elements array, or null if not accessible.
+ * @returns {Array|null} The array of elements, or null if not accessible.
  */
 function getContainerElements( currentDocument ) {
 	const elements = currentDocument.container?.model?.get( "elements" );

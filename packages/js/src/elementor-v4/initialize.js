@@ -16,7 +16,7 @@ import { resetMarks, getWidgetMap } from "./marks";
 window.yoastElementorV4 = { getWidgetMap };
 
 /**
- * Initialises the content watcher.
+ * Initializes the content watcher.
  *
  * @returns {void}
  */
