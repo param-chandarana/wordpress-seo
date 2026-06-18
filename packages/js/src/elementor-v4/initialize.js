@@ -1,6 +1,6 @@
 /* global elementor */
 /**
- * @file Elementor V4 atomic editor entry. Extracts content from the document JSON tree
+ * @file Elementor V4 atomic editor entry. Extracts content from the rendered preview DOM
  *       and dispatches it to the Yoast editor store.
  */
 
@@ -28,12 +28,27 @@ function initializeElementorV4() {
 		"yoast-seo/v4/content-walker/start-observer",
 		() => {
 			stopObserver();
+
+			// The preview DOM renders asynchronously after this hook fires, so a single read now
+			// would miss the initial content. A MutationObserver re-runs the extraction once
+			// Elementor has rendered the widgets (and again when the panel opens), the same way
+			// the legacy watcher handles `$element` loading in later.
+			const previewElement = elementor.documents.getCurrent()?.$element?.get( 0 );
+			const observer = new MutationObserver( debouncedHandleEditorChange );
+			if ( previewElement ) {
+				observer.observe( previewElement, { attributes: true, childList: true, subtree: true, characterData: true } );
+			}
 			elementor.channels.editor.on( "change", debouncedHandleEditorChange );
 			elementor.settings.page.model.on( "change", debouncedHandleEditorChange );
+
 			stopObserver = () => {
+				observer.disconnect();
 				elementor.channels.editor.off( "change", debouncedHandleEditorChange );
 				elementor.settings.page.model.off( "change", debouncedHandleEditorChange );
 			};
+
+			// Read now in case the content is already rendered; the observer covers the later render.
+			debouncedHandleEditorChange();
 		},
 		isFormIdEqualToDocumentId
 	);
