@@ -128,7 +128,7 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 			->andReturn( $consent );
 
 		$wp_rest_response = Mockery::mock( 'overload:' . WP_REST_Response::class );
-		$bad_request      = Mockery::mock( Bad_Request_Exception::class );
+		$bad_request      = new Bad_Request_Exception( 'Bad request', 400 );
 
 		if ( $consent ) {
 			$this->consent_handler
@@ -141,10 +141,15 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 
 			$wp_rest_response
 				->expects( '__construct' )
-				->with( 'Failed to give consent.', 500 )
+				->with( 'Failed to give consent.', 400 )
 				->once();
 		}
 		else {
+			$this->token_manager
+				->expects( 'token_invalidate' )
+				->once()
+				->with( $user_id );
+
 			$this->consent_handler
 				->expects( 'revoke_consent' )
 				->once()
@@ -155,7 +160,7 @@ final class Consent_Test extends Abstract_Consent_Route_Test {
 
 			$wp_rest_response
 				->expects( '__construct' )
-				->with( 'Failed to revoke consent.', 500 )
+				->with( 'Failed to revoke consent.', 400 )
 				->once();
 		}
 
