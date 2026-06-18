@@ -61,7 +61,7 @@ final class Grant_Consent_Test extends Abstract_Consent_Handler_Test {
 							&& $request->get_action_path() === '/user/consent'
 							&& $request->get_http_method() === Request::METHOD_POST
 							&& $request->get_headers() === [ 'Authorization' => 'Bearer jwt-token' ]
-							&& $request->get_body() === [];
+							&& $request->get_body() === [ 'user_id' => '1' ];
 					},
 				),
 			);
