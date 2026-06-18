@@ -88,10 +88,18 @@ class Consent_Handler implements Consent_Handler_Interface {
 	 */
 	public function grant_consent( int $user_id ) {
 		$user = \get_user_by( 'id', $user_id );
-		$jwt  = $this->token_manager->get_or_request_access_token( $user );
+		if ( ! $user instanceof WP_User ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
+			throw new RuntimeException( "User not found: $user_id" );
+		}
+		$jwt = $this->token_manager->get_or_request_access_token( $user );
+
+		$body = [
+			'user_id' => (string) $user_id,
+		];
 
 		$this->request_handler->handle(
-			new Request( '/user/consent', [], [ 'Authorization' => "Bearer $jwt" ], Request::METHOD_POST ),
+			new Request( '/user/consent', $body, [ 'Authorization' => "Bearer $jwt" ], Request::METHOD_POST ),
 		);
 
 		$this->user_helper->update_meta( $user_id, '_yoast_wpseo_ai_consent', true );
