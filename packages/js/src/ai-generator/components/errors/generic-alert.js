@@ -14,12 +14,12 @@ import { STORE_NAME_EDITOR } from "../../constants";
  *
  * @returns {JSX.Element} The element.
  */
-export const GenericAlert = ( { linkStoreName = STORE_NAME_EDITOR } ) => {
+export const GenericAlert = ( { linkStoreName = STORE_NAME_EDITOR, className } ) => {
 	const commonErrorsLink = useSelect( select => select( linkStoreName ).selectLink( "https://yoa.st/ai-common-errors" ), [ linkStoreName ] );
 	const supportLink = useSelect( select => select( linkStoreName ).selectAdminLink( "?page=wpseo_page_support" ), [ linkStoreName ] );
 
 	return (
-		<Alert variant="error">
+		<Alert variant="error" className={ className }>
 			<span className="yst-block yst-font-medium">{ __( "Something went wrong", "wordpress-seo" ) }</span>
 			<p className="yst-mt-2">
 				{ safeCreateInterpolateElement(
@@ -43,4 +43,5 @@ export const GenericAlert = ( { linkStoreName = STORE_NAME_EDITOR } ) => {
 };
 GenericAlert.propTypes = {
 	linkStoreName: PropTypes.string,
+	className: PropTypes.string,
 };
