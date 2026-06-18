@@ -155,4 +155,23 @@ describe( "buildContentAndMap", () => {
 			expect( w.end ).toBeLessThanOrEqual( content.length );
 		} );
 	} );
+
+	it( "does not recurse into a widget node's own children, so nested widgets are not double-counted", () => {
+		// A widget such as nested-tabs carries child widgets in the model, but its rendered HTML
+		// already contains them — the walker must read the widget once and not walk its children.
+		const $el = makePreview( classicWidget( "tabs", "nested-tabs", "<h3>Tab</h3><p>Panel text</p>" ) );
+		const tree = [ {
+			elType: "widget",
+			id: "tabs",
+			widgetType: "nested-tabs",
+			elements: [ widget( "panel", "e-paragraph" ) ],
+		} ];
+		const { content, widgets } = buildContentAndMap( tree, $el );
+
+		expect( widgets ).toHaveLength( 1 );
+		expect( widgets[ 0 ].id ).toBe( "tabs" );
+		expect( widgets.find( ( w ) => w.id === "panel" ) ).toBeUndefined();
+		// "Panel text" appears exactly once (not duplicated by walking the child node).
+		expect( content.split( "Panel text" ) ).toHaveLength( 2 );
+	} );
 } );
