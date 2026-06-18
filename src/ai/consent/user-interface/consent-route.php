@@ -122,10 +122,10 @@ class Consent_Route implements Route_Interface {
 				$this->consent_handler->grant_consent( $user_id );
 			}
 			else {
-				// Delete the consent at user level.
-				$this->consent_handler->revoke_consent( $user_id );
 				// Invalidate the token if the user revoked the consent.
 				$this->token_manager->token_invalidate( $user_id );
+				// Delete the consent at user level.
+				$this->consent_handler->revoke_consent( $user_id );
 			}
 		} catch ( Remote_Request_Exception | RuntimeException $e ) {
 			$this->logger->error( $e->getMessage(), [ 'exception' => $e ] );
