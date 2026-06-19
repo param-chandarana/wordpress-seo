@@ -137,17 +137,23 @@ const disconnectMyyoastConnection = createMyyoastAction( "disconnect" );
  * Starts the authorization-code flow for the site's registration.
  *
  * The backend resolves which registered redirect URI to use, so no URI is
- * sent. On success it returns an `authorize_url` the browser should be
- * navigated to; the caller decides how to do that. On failure the slice's
- * actionError is set, mirroring the other actions.
+ * sent. The optional `returnUrl` tells the backend where to send the browser
+ * once the flow completes — pass the page the flow was started from, since the
+ * flow can be kicked off from several admin pages. It is validated server-side
+ * and ignored when off-site or invalid. On success the action returns an
+ * `authorize_url` the browser should be navigated to; the caller decides how to
+ * do that. On failure the slice's actionError is set, mirroring the other actions.
  *
+ * @param {string} [returnUrl] The URL to return to after the flow completes.
  * @returns {GeneratorFunction} The generator action.
  */
 // eslint-disable-next-line complexity
-const authorizeMyyoastSite = function* () {
+const authorizeMyyoastSite = function* ( returnUrl ) {
 	yield startMyyoastAction( "authorize" );
 	try {
-		const payload = yield{ type: ENDPOINTS.authorize.actionType, payload: {} };
+		// eslint-disable-next-line camelcase -- snake_case matches the REST endpoint's request contract.
+		const body = returnUrl ? { return_url: returnUrl } : {};
+		const payload = yield{ type: ENDPOINTS.authorize.actionType, payload: body };
 		if ( payload?.status ) {
 			yield setMyyoastStatus( transformStatus( payload.status ) );
 		}

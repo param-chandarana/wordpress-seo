@@ -5,6 +5,7 @@ namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\User_Interface;
 use Brain\Monkey;
 use Exception;
 use Mockery;
+use WP_REST_Request;
 use WP_REST_Response;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Authorization_Flow_Exception;
@@ -89,6 +90,13 @@ final class Management_Route_Test extends TestCase {
 			$this->issuer_config,
 			$this->client_registration,
 		);
+
+		// Default throttle stubs: the issuer key is always available and the marker
+		// is absent (cache miss). Writes/deletes are asserted per-test with
+		// Functions\expect(); a Functions\when() default here would shadow those
+		// expectations, so it is intentionally omitted.
+		$this->issuer_config->shouldReceive( 'get_issuer_key' )->andReturn( 'abcd1234' )->byDefault();
+		Monkey\Functions\when( 'get_transient' )->justReturn( false );
 	}
 
 	/**
@@ -109,6 +117,20 @@ final class Management_Route_Test extends TestCase {
 	private function unprovision(): void {
 		$this->issuer_config->shouldReceive( 'get_software_statement' )->andReturn( '' );
 		$this->issuer_config->shouldReceive( 'get_initial_access_token' )->andReturn( '' );
+	}
+
+	/**
+	 * Builds a REST request mock whose `return_url` param returns the given value.
+	 *
+	 * @param string|null $return_url The value `get_param( 'return_url' )` should return.
+	 *
+	 * @return WP_REST_Request|Mockery\MockInterface
+	 */
+	private function request_with_return_url( ?string $return_url ) {
+		$request = Mockery::mock( WP_REST_Request::class );
+		$request->shouldReceive( 'get_param' )->with( 'return_url' )->andReturn( $return_url );
+
+		return $request;
 	}
 
 	/**
@@ -197,9 +219,11 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that refresh_status dispatches to the facade and returns a success payload.
+	 * Tests that refresh_status dispatches to the facade, sets the throttle
+	 * marker, and returns a success payload.
 	 *
 	 * @covers ::refresh_status
+	 * @covers ::get_refresh_throttle_key
 	 *
 	 * @return void
 	 */
@@ -207,6 +231,58 @@ final class Management_Route_Test extends TestCase {
 		$this->provision();
 		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )->once()->andReturn( [] );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		Monkey\Functions\expect( 'set_transient' )
+			->once()
+			->with( 'wpseo_myyoast_refresh_throttle_abcd1234', 1, \HOUR_IN_SECONDS );
+
+		Mockery::mock( 'overload:' . WP_REST_Response::class );
+
+		$response = $this->instance->refresh_status();
+
+		$this->assertInstanceOf( WP_REST_Response::class, $response );
+	}
+
+	/**
+	 * Tests that refresh_status skips the upstream call when the throttle marker
+	 * is present, returning the local status without touching the facade.
+	 *
+	 * @covers ::refresh_status
+	 * @covers ::get_refresh_throttle_key
+	 *
+	 * @return void
+	 */
+	public function test_refresh_status_skips_when_throttled() {
+		$this->provision();
+		Monkey\Functions\when( 'get_transient' )->justReturn( 1 );
+		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		$this->myyoast_client->shouldNotReceive( 'refresh_registration_status' );
+		Monkey\Functions\expect( 'set_transient' )->never();
+
+		Mockery::mock( 'overload:' . WP_REST_Response::class );
+
+		$response = $this->instance->refresh_status();
+
+		$this->assertInstanceOf( WP_REST_Response::class, $response );
+	}
+
+	/**
+	 * Tests that a failed upstream refresh does not set the throttle marker, so
+	 * the next load retries.
+	 *
+	 * @covers ::refresh_status
+	 *
+	 * @return void
+	 */
+	public function test_refresh_status_does_not_throttle_on_failure() {
+		$this->provision();
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
+			->once()
+			->andThrow( new Rate_Limited_Exception( 'slow down' ) );
+		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		Monkey\Functions\expect( 'set_transient' )->never();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -301,8 +377,12 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that refresh_status maps each domain exception to a response (smoke test
-	 * — exception-mapping coverage is per-branch but groups into one test).
+	 * Tests that handle_exception maps each domain exception to a response (smoke
+	 * test — exception-mapping coverage is per-branch but groups into one test).
+	 *
+	 * Driven through update_registration, which catches the full Throwable family;
+	 * refresh_status only catches Registration_Failed_Exception (its declared
+	 * throw type), so it cannot reach the sibling branches exercised here.
 	 *
 	 * @covers ::handle_exception
 	 *
@@ -311,6 +391,7 @@ final class Management_Route_Test extends TestCase {
 	public function test_handle_exception_branches() {
 		$this->provision();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+		Monkey\Functions\expect( 'delete_transient' )->never();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -326,11 +407,11 @@ final class Management_Route_Test extends TestCase {
 		];
 
 		foreach ( $exceptions as $exception ) {
-			$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
+			$this->myyoast_client->shouldReceive( 'ensure_registered' )
 				->once()
 				->andThrow( $exception );
 
-			$response = $this->instance->refresh_status();
+			$response = $this->instance->update_registration();
 
 			$this->assertInstanceOf( WP_REST_Response::class, $response );
 		}
@@ -351,6 +432,10 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client->shouldReceive( 'ensure_registered' )->once()->withNoArgs();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
+		Monkey\Functions\expect( 'delete_transient' )
+			->once()
+			->with( 'wpseo_myyoast_refresh_throttle_abcd1234' );
+
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
 		$response = $this->instance->register();
@@ -370,6 +455,10 @@ final class Management_Route_Test extends TestCase {
 
 		$this->myyoast_client->shouldReceive( 'ensure_registered' )->once()->withNoArgs();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		Monkey\Functions\expect( 'delete_transient' )
+			->once()
+			->with( 'wpseo_myyoast_refresh_throttle_abcd1234' );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -415,6 +504,10 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client->shouldReceive( 'clear_all_site_tokens' )->once();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
+		Monkey\Functions\expect( 'delete_transient' )
+			->once()
+			->with( 'wpseo_myyoast_refresh_throttle_abcd1234' );
+
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
 		$response = $this->instance->deregister();
@@ -436,6 +529,7 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client->shouldReceive( 'deregister' )->once()->andReturn( false );
 		$this->myyoast_client->shouldReceive( 'clear_all_site_tokens' )->once();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+		Monkey\Functions\expect( 'delete_transient' )->zeroOrMoreTimes();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -458,6 +552,7 @@ final class Management_Route_Test extends TestCase {
 		$this->myyoast_client->shouldReceive( 'deregister' )->once()->andThrow( new Exception( 'boom' ) );
 		$this->myyoast_client->shouldReceive( 'clear_all_site_tokens' )->once();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+		Monkey\Functions\expect( 'delete_transient' )->zeroOrMoreTimes();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -470,9 +565,11 @@ final class Management_Route_Test extends TestCase {
 	 * Tests the registration-mutating endpoints short-circuit when the plugin is
 	 * not provisioned.
 	 *
-	 * Only register/update/authorize require the software statement and initial
-	 * access token; refresh-status and deregister work without them and are covered by
-	 * their own tests.
+	 * The register/update endpoints gate on provisioning; authorize gates on
+	 * having a registered client (a stricter precondition that also implies
+	 * provisioning), so with no client stubbed it short-circuits before touching
+	 * the facade too. The refresh-status and deregister endpoints work without
+	 * provisioning and are covered by their own tests.
 	 *
 	 * @covers ::require_provisioned
 	 *
@@ -480,6 +577,7 @@ final class Management_Route_Test extends TestCase {
 	 */
 	public function test_registration_actions_blocked_when_not_provisioned() {
 		$this->unprovision();
+		$this->client_registration->shouldReceive( 'get_registered_client' )->andReturn( null );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		$this->myyoast_client->shouldNotReceive( 'ensure_registered' );
@@ -489,7 +587,7 @@ final class Management_Route_Test extends TestCase {
 
 		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->register() );
 		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->update_registration() );
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $this->request_with_return_url( null ) ) );
 	}
 
 	/**
@@ -504,6 +602,7 @@ final class Management_Route_Test extends TestCase {
 		$this->unprovision();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )->once();
+		Monkey\Functions\expect( 'set_transient' )->zeroOrMoreTimes();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -523,6 +622,7 @@ final class Management_Route_Test extends TestCase {
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 		$this->myyoast_client->shouldReceive( 'deregister' )->once()->andReturn( true );
 		$this->myyoast_client->shouldReceive( 'clear_all_site_tokens' )->once();
+		Monkey\Functions\expect( 'delete_transient' )->zeroOrMoreTimes();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
@@ -530,13 +630,14 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests authorize returns the authorization URL when the site is registered.
+	 * Tests authorize passes a valid same-host return URL through to the facade.
 	 *
 	 * @covers ::authorize
+	 * @covers ::resolve_return_url
 	 *
 	 * @return void
 	 */
-	public function test_authorize_returns_authorization_url() {
+	public function test_authorize_passes_valid_return_url() {
 		$this->provision();
 
 		$return_url    = 'https://example.com/wp-admin/admin.php?page=wpseo_integrations';
@@ -554,8 +655,9 @@ final class Management_Route_Test extends TestCase {
 
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'admin.php?page=wpseo_integrations' )
+		Monkey\Functions\expect( 'wp_validate_redirect' )
+			->once()
+			->with( $return_url, '' )
 			->andReturn( $return_url );
 
 		$this->myyoast_client->shouldReceive( 'get_authorization_url' )
@@ -567,7 +669,92 @@ final class Management_Route_Test extends TestCase {
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$response = $this->instance->authorize();
+		$response = $this->instance->authorize( $this->request_with_return_url( $return_url ) );
+
+		$this->assertInstanceOf( WP_REST_Response::class, $response );
+	}
+
+	/**
+	 * Tests authorize passes null to the facade when no return URL is supplied,
+	 * so the callback later surfaces a standalone outcome instead of redirecting.
+	 *
+	 * @covers ::authorize
+	 * @covers ::resolve_return_url
+	 *
+	 * @return void
+	 */
+	public function test_authorize_passes_null_when_return_url_absent() {
+		$this->provision();
+
+		$this->client_registration->shouldReceive( 'get_registered_client' )
+			->andReturn(
+				new Registered_Client(
+					'client-123',
+					'rat',
+					'https://my.yoast.com/clients/client-123',
+					[ 'redirect_uris' => [ 'https://example.com/cb' ] ],
+				),
+			);
+
+		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
+		Monkey\Functions\expect( 'wp_validate_redirect' )->never();
+
+		$this->myyoast_client->shouldReceive( 'get_authorization_url' )
+			->once()
+			->with( 42, [ 'openid' ], null, null )
+			->andReturn( 'https://my.yoast.com/auth?code_challenge=abc' );
+
+		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		Mockery::mock( 'overload:' . WP_REST_Response::class );
+
+		$response = $this->instance->authorize( $this->request_with_return_url( null ) );
+
+		$this->assertInstanceOf( WP_REST_Response::class, $response );
+	}
+
+	/**
+	 * Tests authorize drops an off-site return URL to null rather than forwarding
+	 * it, closing the open-redirect surface at the route.
+	 *
+	 * @covers ::authorize
+	 * @covers ::resolve_return_url
+	 *
+	 * @return void
+	 */
+	public function test_authorize_drops_offsite_return_url() {
+		$this->provision();
+
+		$evil_url = 'https://evil.example.org/phish';
+
+		$this->client_registration->shouldReceive( 'get_registered_client' )
+			->andReturn(
+				new Registered_Client(
+					'client-123',
+					'rat',
+					'https://my.yoast.com/clients/client-123',
+					[ 'redirect_uris' => [ 'https://example.com/cb' ] ],
+				),
+			);
+
+		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
+
+		// wp_validate_redirect returns the (empty) fallback for an off-site URL.
+		Monkey\Functions\expect( 'wp_validate_redirect' )
+			->once()
+			->with( $evil_url, '' )
+			->andReturn( '' );
+
+		$this->myyoast_client->shouldReceive( 'get_authorization_url' )
+			->once()
+			->with( 42, [ 'openid' ], null, null )
+			->andReturn( 'https://my.yoast.com/auth?code_challenge=abc' );
+
+		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
+
+		Mockery::mock( 'overload:' . WP_REST_Response::class );
+
+		$response = $this->instance->authorize( $this->request_with_return_url( $evil_url ) );
 
 		$this->assertInstanceOf( WP_REST_Response::class, $response );
 	}
@@ -588,7 +775,7 @@ final class Management_Route_Test extends TestCase {
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $this->request_with_return_url( null ) ) );
 	}
 
 	/**
@@ -613,10 +800,6 @@ final class Management_Route_Test extends TestCase {
 
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'admin.php?page=wpseo_integrations' )
-			->andReturn( 'https://example.com/wp-admin/admin.php?page=wpseo_integrations' );
-
 		$this->myyoast_client->shouldReceive( 'get_authorization_url' )
 			->andThrow( new Authorization_Flow_Exception( 'registration_failed', 'boom' ) );
 
@@ -624,6 +807,6 @@ final class Management_Route_Test extends TestCase {
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize() );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->authorize( $this->request_with_return_url( null ) ) );
 	}
 }

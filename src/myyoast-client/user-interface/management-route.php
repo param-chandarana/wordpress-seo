@@ -5,9 +5,9 @@
 namespace Yoast\WP\SEO\MyYoast_Client\User_Interface;
 
 use Throwable;
+use WP_REST_Request;
 use WP_REST_Response;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
-use Yoast\WP\SEO\Integrations\Admin\Integrations_Page;
 use Yoast\WP\SEO\Main;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Authorization_Flow_Exception;
 use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Discovery_Failed_Exception;
@@ -44,6 +44,25 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	public const REGISTER_ROUTE       = '/register';
 	public const REGISTRATION_ROUTE   = '/registration';
 	public const AUTHORIZE_ROUTE      = '/authorize';
+
+	/**
+	 * How long a successful upstream status refresh suppresses further upstream
+	 * calls, in seconds. The integrations page auto-refreshes on every load, and
+	 * MyYoast rate-limits the RFC 7592 read aggressively, so we throttle our own
+	 * calls. This caches no response data — only the fact that we checked — so it
+	 * does not conflict with the endpoint's no-store header.
+	 *
+	 * @var int
+	 */
+	private const REFRESH_THROTTLE_TTL_IN_SECONDS = \HOUR_IN_SECONDS;
+
+	/**
+	 * Transient key prefix for the refresh throttle marker. Suffixed with the
+	 * issuer key so switching issuers does not carry the marker across.
+	 *
+	 * @var string
+	 */
+	private const REFRESH_THROTTLE_TRANSIENT_PREFIX = 'wpseo_myyoast_refresh_throttle_';
 
 	/**
 	 * The MyYoast client facade.
@@ -165,6 +184,14 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 				'methods'             => 'POST',
 				'callback'            => [ $this, 'authorize' ],
 				'permission_callback' => $permission_callback,
+				'args'                => [
+					'return_url' => [
+						'type'              => 'string',
+						'required'          => false,
+						'description'       => 'URL to send the browser back to once the flow completes. Validated against the site host; an invalid or off-site URL is ignored.',
+						'sanitize_callback' => 'esc_url_raw',
+					],
+				],
 			],
 		);
 	}
@@ -184,22 +211,34 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	 * @return WP_REST_Response
 	 */
 	public function get_status() {
-		return $this->respond_with_status( 200, null );
+		return $this->respond_with_connection_status( 200, null );
 	}
 
 	/**
 	 * POST /myyoast/refresh-status — refreshes the registration status against the server.
 	 *
+	 * Throttled: a successful upstream refresh suppresses further upstream calls
+	 * for an hour. Within that window the call is skipped and the locally-derived
+	 * status is returned unchanged, so a page reload does not hit MyYoast's rate
+	 * limit. The upstream response body is never stored — only the throttle marker.
+	 *
 	 * @return WP_REST_Response
 	 */
 	public function refresh_status() {
+		if ( \get_transient( $this->get_refresh_throttle_key() ) !== false ) {
+			return $this->respond_with_connection_status( 200, null );
+		}
+
 		try {
 			$this->myyoast_client->refresh_registration_status();
-		} catch ( Throwable $e ) {
+		} catch ( Registration_Failed_Exception $e ) {
 			return $this->handle_exception( $e );
 		}
 
-		return $this->respond_with_status( 200, null );
+		// Mark only on success: a failed or rate-limited attempt must not suppress the next retry.
+		\set_transient( $this->get_refresh_throttle_key(), 1, self::REFRESH_THROTTLE_TTL_IN_SECONDS );
+
+		return $this->respond_with_connection_status( 200, null );
 	}
 
 	/**
@@ -215,11 +254,13 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 
 		try {
 			$this->myyoast_client->ensure_registered();
-		} catch ( Throwable $e ) {
+		} catch ( Registration_Failed_Exception $e ) {
 			return $this->handle_exception( $e );
 		}
 
-		return $this->respond_with_status( 200, 'connect_success' );
+		$this->clear_refresh_throttle();
+
+		return $this->respond_with_connection_status( 200, 'connect_success' );
 	}
 
 	/**
@@ -243,7 +284,9 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 			return $this->handle_exception( $e );
 		}
 
-		return $this->respond_with_status( 200, 'update_success' );
+		$this->clear_refresh_throttle();
+
+		return $this->respond_with_connection_status( 200, 'update_success' );
 	}
 
 	/**
@@ -255,14 +298,17 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	 * the redirect URI itself, and the authorization-code handler marks it
 	 * validated once the returning code is exchanged.
 	 *
+	 * The optional `return_url` is where the browser is sent once the flow
+	 * completes; the caller supplies it because the flow can be started from
+	 * different admin pages. It is validated against the site's own host, so an
+	 * off-site or tampered value is dropped (and the callback then surfaces a
+	 * standalone outcome rather than redirecting anywhere).
+	 *
+	 * @param WP_REST_Request $request The REST request.
+	 *
 	 * @return WP_REST_Response
 	 */
-	public function authorize(): WP_REST_Response {
-		$gate = $this->require_provisioned();
-		if ( $gate !== null ) {
-			return $gate;
-		}
-
+	public function authorize( WP_REST_Request $request ): WP_REST_Response {
 		if ( $this->client_registration->get_registered_client() === null ) {
 			return $this->error_response( 'registration_gone' );
 		}
@@ -272,7 +318,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 			return $this->error_response( 'invalid_user', null, 401 );
 		}
 
-		$return_url = \admin_url( 'admin.php?page=' . Integrations_Page::PAGE );
+		$return_url = $this->resolve_return_url( $request->get_param( 'return_url' ) );
 
 		try {
 			$authorize_url = $this->myyoast_client->get_authorization_url(
@@ -283,7 +329,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 			);
 		} catch ( Authorization_Flow_Exception $e ) {
 			return $this->error_response( 'registration_failed', $e );
-		} catch ( Throwable $e ) {
+		} catch ( Invalid_Resource_Exception $e ) {
 			return $this->handle_exception( $e );
 		}
 
@@ -325,7 +371,34 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 			$this->logger->warning( 'MyYoast server-side deregistration was not confirmed; the site was disconnected locally.' );
 		}
 
-		return $this->respond_with_status( 200, 'disconnect_success' );
+		$this->clear_refresh_throttle();
+
+		return $this->respond_with_connection_status( 200, 'disconnect_success' );
+	}
+
+	/**
+	 * Validates a caller-supplied return URL against the site's own host.
+	 *
+	 * The return URL is optional: callers that have nowhere meaningful to send
+	 * the user back to omit it. Anything off-site or otherwise invalid is treated
+	 * as absent rather than rewritten to a default — `wp_validate_redirect()` with
+	 * an empty fallback yields an empty string, which we normalize to null. The
+	 * callback re-validates the stored value before redirecting, so this is the
+	 * first of two gates against an open redirect.
+	 *
+	 * @param string|null $return_url The sanitized `return_url` request parameter (the route's
+	 *                                args schema coerces it to a string; absent when not sent).
+	 *
+	 * @return string|null The validated same-host URL, or null when none applies.
+	 */
+	private function resolve_return_url( ?string $return_url ): ?string {
+		if ( $return_url === null || $return_url === '' ) {
+			return null;
+		}
+
+		$validated = \wp_validate_redirect( $return_url, '' );
+
+		return ( $validated === '' ) ? null : $validated;
 	}
 
 	/**
@@ -408,6 +481,32 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	}
 
 	/**
+	 * Returns the issuer-scoped transient key for the refresh throttle marker.
+	 *
+	 * @return string The transient key.
+	 */
+	private function get_refresh_throttle_key(): string {
+		return \sprintf(
+			'%s_%s',
+			\rtrim( self::REFRESH_THROTTLE_TRANSIENT_PREFIX, '_' ),
+			$this->issuer_config->get_issuer_key(),
+		);
+	}
+
+	/**
+	 * Clears the refresh throttle marker so the next status read hits the server.
+	 *
+	 * Called after any endpoint that changes the registration (connect, re-sync,
+	 * disconnect): the throttle exists only to spare MyYoast's rate limit on
+	 * unchanged status, so a deliberate state change must invalidate it.
+	 *
+	 * @return void
+	 */
+	private function clear_refresh_throttle(): void {
+		\delete_transient( $this->get_refresh_throttle_key() );
+	}
+
+	/**
 	 * Builds a successful response carrying the refreshed status payload.
 	 *
 	 * @param int         $status      The HTTP status.
@@ -415,7 +514,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	 *
 	 * @return WP_REST_Response
 	 */
-	private function respond_with_status( int $status, ?string $message_key ): WP_REST_Response {
+	private function respond_with_connection_status( int $status, ?string $message_key ): WP_REST_Response {
 		$body = [
 			'status' => $this->status_presenter->present(),
 		];
