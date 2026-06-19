@@ -4,17 +4,12 @@
 
 namespace Yoast\WP\SEO\MyYoast_Client\User_Interface;
 
-use Throwable;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
 use Yoast\WP\SEO\General\User_Interface\General_Page_Integration;
 use Yoast\WP\SEO\Helpers\Redirect_Helper;
 use Yoast\WP\SEO\Integrations\Integration_Interface;
 use Yoast\WP\SEO\MyYoast_Client\Application\Authorization_Code_Handler;
-use Yoast\WP\SEO\MyYoast_Client\Application\Exceptions\Token_Request_Failed_Exception;
-use Yoast\WP\SEO\MyYoast_Client\Application\MyYoast_Client;
-use YoastSEO_Vendor\Psr\Log\LoggerAwareInterface;
-use YoastSEO_Vendor\Psr\Log\LoggerAwareTrait;
-use YoastSEO_Vendor\Psr\Log\NullLogger;
+use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Callback_Handler;
 
 /**
  * Handles the OAuth authorization-code callback redirect.
@@ -22,33 +17,27 @@ use YoastSEO_Vendor\Psr\Log\NullLogger;
  * Registers a dedicated callback endpoint on `admin-post.php` (reachable for
  * any logged-in user, regardless of which admin page the flow started from) as
  * the site's OAuth redirect URI, hooks the matching `admin_post_*` action,
- * exchanges the returning code, surfaces a notification via a short-lived
- * per-user transient, and redirects the user to the `return_url` they were
- * sent off from.
+ * drives the callback handler (which exchanges the returning code and records
+ * the outcome for one-shot surfacing), and redirects the user to the
+ * `return_url` they were sent off from.
  *
  * The base client defaults its redirect URI to an admin page; we replace that
  * with this endpoint through the redirect-URI provider's filters so the
  * callback never depends on a specific page being loaded.
  */
-class OAuth_Callback_Integration implements Integration_Interface, LoggerAwareInterface {
-
-	use LoggerAwareTrait;
+class OAuth_Callback_Integration implements Integration_Interface {
 
 	public const CALLBACK_ACTION = 'yoast_myyoast_oauth_callback';
 
-	public const TRANSIENT_PREFIX = 'wpseo_myyoast_oauth_outcome_';
-	private const TRANSIENT_TTL   = \MINUTE_IN_SECONDS;
-
 	/**
-	 * The MyYoast client facade.
+	 * The callback handler — performs the callback-URL-agnostic orchestration.
 	 *
-	 * @var MyYoast_Client
+	 * @var OAuth_Callback_Handler
 	 */
-	private $myyoast_client;
+	private $callback_handler;
 
 	/**
-	 * The authorization code handler — used to read the stored return URL and
-	 * to discard pending state when the provider returns an error.
+	 * The authorization code handler — used to read the stored return URL.
 	 *
 	 * @var Authorization_Code_Handler
 	 */
@@ -65,19 +54,18 @@ class OAuth_Callback_Integration implements Integration_Interface, LoggerAwareIn
 	/**
 	 * Constructor.
 	 *
-	 * @param MyYoast_Client             $myyoast_client    The MyYoast client facade.
+	 * @param OAuth_Callback_Handler     $callback_handler  The callback handler.
 	 * @param Authorization_Code_Handler $auth_code_handler The authorization code handler.
 	 * @param Redirect_Helper            $redirect_helper   The redirect helper.
 	 */
 	public function __construct(
-		MyYoast_Client $myyoast_client,
+		OAuth_Callback_Handler $callback_handler,
 		Authorization_Code_Handler $auth_code_handler,
 		Redirect_Helper $redirect_helper
 	) {
-		$this->myyoast_client    = $myyoast_client;
+		$this->callback_handler  = $callback_handler;
 		$this->auth_code_handler = $auth_code_handler;
 		$this->redirect_helper   = $redirect_helper;
-		$this->logger            = new NullLogger();
 	}
 
 	/**
@@ -97,7 +85,6 @@ class OAuth_Callback_Integration implements Integration_Interface, LoggerAwareIn
 	public function register_hooks() {
 		\add_action( 'admin_post_' . self::CALLBACK_ACTION, [ $this, 'handle' ] );
 	}
-
 
 	/**
 	 * Returns this site's dedicated OAuth callback endpoint URL.
@@ -124,48 +111,15 @@ class OAuth_Callback_Integration implements Integration_Interface, LoggerAwareIn
 			return;
 		}
 
-		$error = $this->read_query_arg( 'error' );
-		if ( $error !== '' ) {
-			$this->auth_code_handler->discard_flow_state( $user_id );
-			$key = ( $error === 'access_denied' ) ? 'connection_cancelled' : 'unexpected_error';
-			$this->set_outcome( $user_id, 'error', $key );
-			$this->redirect_helper->do_safe_redirect( $return_url );
-			return;
-		}
+		// The handler records the outcome for the next page load to surface; this
+		// endpoint only needs to send the browser back where the flow started.
+		$this->callback_handler->handle(
+			$user_id,
+			$this->read_query_arg( 'code' ),
+			$this->read_query_arg( 'state' ),
+			$this->read_query_arg( 'error' ),
+		);
 
-		$code  = $this->read_query_arg( 'code' );
-		$state = $this->read_query_arg( 'state' );
-
-		if ( $code === '' || $state === '' ) {
-			// Stale bookmark or someone hitting the callback URL directly. No notification.
-			$this->redirect_helper->do_safe_redirect( $return_url );
-			return;
-		}
-
-		try {
-			$this->myyoast_client->exchange_authorization_code( $user_id, $code, $state );
-		} catch ( Token_Request_Failed_Exception $e ) {
-			$is_invalid_grant = ( $e->get_error_code() === 'invalid_grant' );
-			$key              = ( $is_invalid_grant ) ? 'token_request_failed_invalid_grant' : 'token_request_failed';
-			$this->set_outcome( $user_id, 'error', $key );
-			$this->redirect_helper->do_safe_redirect( $return_url );
-			return;
-		} catch ( Throwable $e ) {
-			$this->logger->error(
-				'Unexpected error during MyYoast OAuth callback exchange for user {user_id}: {error}',
-				[
-					'user_id' => $user_id,
-					'error'   => $e->getMessage(),
-				],
-			);
-			$this->set_outcome( $user_id, 'error', 'unexpected_error' );
-			$this->redirect_helper->do_safe_redirect( $return_url );
-			return;
-		}
-
-		// The authorization-code handler marks the redirect URI validated as part of
-		// exchanging the code, so the refreshed status already reflects the verified state.
-		$this->set_outcome( $user_id, 'success', 'verify_success' );
 		$this->redirect_helper->do_safe_redirect( $return_url );
 	}
 
@@ -210,28 +164,5 @@ class OAuth_Callback_Integration implements Integration_Interface, LoggerAwareIn
 		}
 		return \sanitize_text_field( \wp_unslash( $_GET[ $name ] ) );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
-	}
-
-	/**
-	 * Stores the callback outcome in a short-lived per-user transient.
-	 *
-	 * @param int    $user_id The WordPress user ID.
-	 * @param string $kind    The outcome kind, either "success" or "error".
-	 * @param string $key     The message key the front-end maps to copy.
-	 *
-	 * @return void
-	 */
-	private function set_outcome( int $user_id, string $kind, string $key ): void {
-		if ( $user_id <= 0 ) {
-			return;
-		}
-		\set_transient(
-			self::TRANSIENT_PREFIX . $user_id,
-			[
-				'kind' => $kind,
-				'key'  => $key,
-			],
-			self::TRANSIENT_TTL,
-		);
 	}
 }

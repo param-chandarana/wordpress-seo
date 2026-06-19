@@ -5,6 +5,8 @@ namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\User_Interface;
 use Brain\Monkey;
 use Mockery;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
+use Yoast\WP\SEO\MyYoast_Client\Application\Callback_Outcome;
+use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Callback_Handler;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Integrations_Page_Script_Data;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Status_Presenter;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
@@ -31,6 +33,13 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 	private $myyoast_connection_conditional;
 
 	/**
+	 * The callback handler mock.
+	 *
+	 * @var OAuth_Callback_Handler|Mockery\MockInterface
+	 */
+	private $callback_handler;
+
+	/**
 	 * The instance under test.
 	 *
 	 * @var Integrations_Page_Script_Data
@@ -47,15 +56,17 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 
 		$this->status_presenter               = Mockery::mock( Status_Presenter::class );
 		$this->myyoast_connection_conditional = Mockery::mock( MyYoast_Connection_Conditional::class );
+		$this->callback_handler               = Mockery::mock( OAuth_Callback_Handler::class );
 		$this->instance                       = new Integrations_Page_Script_Data(
 			$this->status_presenter,
 			$this->myyoast_connection_conditional,
+			$this->callback_handler,
 		);
 	}
 
 	/**
 	 * Tests the payload is returned when the feature flag is enabled and no
-	 * callback outcome transient is pending.
+	 * callback outcome is pending.
 	 *
 	 * @covers ::__construct
 	 * @covers ::present
@@ -79,9 +90,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->with( 'profile.php' )
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
-		Monkey\Functions\expect( 'get_transient' )
-			->with( 'wpseo_myyoast_oauth_outcome_42' )
-			->andReturn( false );
+		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 42 )->andReturn( null );
 
 		$result = $this->instance->present();
 
@@ -92,14 +101,14 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 	}
 
 	/**
-	 * Tests the callback outcome transient is read and consumed.
+	 * Tests a successful outcome is shaped into the verify_success notification.
 	 *
 	 * @covers ::present
 	 * @covers ::consume_callback_outcome
 	 *
 	 * @return void
 	 */
-	public function test_present_consumes_callback_outcome() {
+	public function test_present_consumes_success_outcome() {
 		$status = [
 			'is_provisioned'    => true,
 			'is_registered'     => true,
@@ -115,17 +124,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->with( 'profile.php' )
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
-		Monkey\Functions\expect( 'get_transient' )
-			->with( 'wpseo_myyoast_oauth_outcome_7' )
-			->andReturn(
-				[
-					'kind' => 'success',
-					'key'  => 'verify_success',
-				],
-			);
-		Monkey\Functions\expect( 'delete_transient' )
-			->once()
-			->with( 'wpseo_myyoast_oauth_outcome_7' );
+		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( Callback_Outcome::success() );
 
 		$result = $this->instance->present();
 
@@ -140,13 +139,20 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 	}
 
 	/**
-	 * Tests a malformed transient payload is ignored.
+	 * Tests an error outcome is translated to its front-end message key.
 	 *
+	 * @covers ::present
 	 * @covers ::consume_callback_outcome
+	 * @covers ::error_message_key
+	 *
+	 * @dataProvider provide_error_outcomes
+	 *
+	 * @param Callback_Outcome $outcome      The stored outcome.
+	 * @param string           $expected_key The expected front-end message key.
 	 *
 	 * @return void
 	 */
-	public function test_present_ignores_malformed_callback_outcome() {
+	public function test_present_translates_error_outcome( Callback_Outcome $outcome, string $expected_key ) {
 		$status = [
 			'is_provisioned'    => true,
 			'is_registered'     => false,
@@ -161,27 +167,43 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		Monkey\Functions\expect( 'admin_url' )
 			->with( 'profile.php' )
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
-		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 9 );
-		Monkey\Functions\expect( 'get_transient' )
-			->with( 'wpseo_myyoast_oauth_outcome_9' )
-			->andReturn( [ 'kind' => 'success' ] );
-		Monkey\Functions\expect( 'delete_transient' )
-			->once()
-			->with( 'wpseo_myyoast_oauth_outcome_9' );
+		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
+		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( $outcome );
 
 		$result = $this->instance->present();
 
-		$this->assertNull( $result['callbackOutcome'] );
+		$this->assertSame(
+			[
+				'kind' => 'error',
+				'key'  => $expected_key,
+			],
+			$result['callbackOutcome'],
+		);
 	}
 
 	/**
-	 * Tests the callback outcome is not consulted when no user is logged in.
+	 * Provides error outcomes and the message keys they map to.
+	 *
+	 * @return array<string, array{Callback_Outcome, string}>
+	 */
+	public static function provide_error_outcomes(): array {
+		return [
+			'provider access_denied -> cancelled'    => [ Callback_Outcome::provider_error( 'access_denied' ), 'connection_cancelled' ],
+			'other provider error -> unexpected'     => [ Callback_Outcome::provider_error( 'server_error' ), 'unexpected_error' ],
+			'invalid_grant -> dedicated key'         => [ Callback_Outcome::exchange_error( 'invalid_grant' ), 'token_request_failed_invalid_grant' ],
+			'other exchange error -> generic key'    => [ Callback_Outcome::exchange_error( 'invalid_request' ), 'token_request_failed' ],
+			'code-less exchange error -> unexpected' => [ Callback_Outcome::exchange_error( null ), 'unexpected_error' ],
+		];
+	}
+
+	/**
+	 * Tests the store still drives consumption with the resolved (zero) user id when no user is logged in.
 	 *
 	 * @covers ::consume_callback_outcome
 	 *
 	 * @return void
 	 */
-	public function test_present_skips_transient_lookup_without_user() {
+	public function test_present_without_user() {
 		$status = [
 			'is_provisioned'    => true,
 			'is_registered'     => false,
@@ -197,6 +219,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->with( 'profile.php' )
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 0 );
+		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 0 )->andReturn( null );
 
 		$result = $this->instance->present();
 

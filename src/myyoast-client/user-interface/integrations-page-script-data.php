@@ -5,6 +5,8 @@
 namespace Yoast\WP\SEO\MyYoast_Client\User_Interface;
 
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
+use Yoast\WP\SEO\MyYoast_Client\Application\Callback_Outcome;
+use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Callback_Handler;
 
 /**
  * Builds the MyYoast connection payload exposed to the Integrations page's
@@ -30,17 +32,27 @@ class Integrations_Page_Script_Data {
 	private $myyoast_connection_conditional;
 
 	/**
+	 * The callback handler — reads the pending OAuth callback outcome.
+	 *
+	 * @var OAuth_Callback_Handler
+	 */
+	private $callback_handler;
+
+	/**
 	 * Integrations_Page_Script_Data constructor.
 	 *
 	 * @param Status_Presenter               $status_presenter               The status presenter.
 	 * @param MyYoast_Connection_Conditional $myyoast_connection_conditional The MyYoast connection feature-flag conditional.
+	 * @param OAuth_Callback_Handler         $callback_handler               The callback handler.
 	 */
 	public function __construct(
 		Status_Presenter $status_presenter,
-		MyYoast_Connection_Conditional $myyoast_connection_conditional
+		MyYoast_Connection_Conditional $myyoast_connection_conditional,
+		OAuth_Callback_Handler $callback_handler
 	) {
 		$this->status_presenter               = $status_presenter;
 		$this->myyoast_connection_conditional = $myyoast_connection_conditional;
+		$this->callback_handler               = $callback_handler;
 	}
 
 	/**
@@ -66,34 +78,57 @@ class Integrations_Page_Script_Data {
 	}
 
 	/**
-	 * Reads and deletes the per-user OAuth callback outcome transient.
-	 *
-	 * Consumed-on-read so the notification only fires once.
+	 * Reads and consumes the pending OAuth callback outcome for the current user
+	 * and shapes it for the React app.
 	 *
 	 * @return array{kind: string, key: string}|null The outcome, or null when none is pending.
 	 */
 	private function consume_callback_outcome(): ?array {
-		$user_id = \get_current_user_id();
-		if ( $user_id <= 0 ) {
+		$outcome = $this->callback_handler->consume_outcome( \get_current_user_id() );
+		if ( $outcome === null ) {
 			return null;
 		}
 
-		$transient_key = OAuth_Callback_Integration::TRANSIENT_PREFIX . $user_id;
-		$stored        = \get_transient( $transient_key );
-		if ( ! \is_array( $stored ) ) {
-			return null;
-		}
-		\delete_transient( $transient_key );
-
-		$kind = ( $stored['kind'] ?? '' );
-		$key  = ( $stored['key'] ?? '' );
-		if ( ! \is_string( $kind ) || ! \is_string( $key ) || $kind === '' || $key === '' ) {
-			return null;
+		if ( $outcome->is_success() ) {
+			return [
+				'kind' => 'success',
+				'key'  => 'verify_success',
+			];
 		}
 
 		return [
-			'kind' => $kind,
-			'key'  => $key,
+			'kind' => 'error',
+			'key'  => $this->error_message_key( $outcome ),
 		];
+	}
+
+	/**
+	 * Maps a failed callback outcome to the front-end message key.
+	 *
+	 * Translates the neutral, native-OAuth outcome into the message keys the
+	 * integrations-page JS understands (see `buildMessages()` in
+	 * `myyoast-integration.js`). The same missing code means different things per
+	 * OAuth phase: a provider error other than `access_denied` is unexpected,
+	 * while a token-endpoint error other than `invalid_grant` is a generic token
+	 * failure.
+	 *
+	 * @param Callback_Outcome $outcome The failed callback outcome.
+	 *
+	 * @return string The message key the front-end maps to copy.
+	 */
+	private function error_message_key( Callback_Outcome $outcome ): string {
+		if ( $outcome->get_error_phase() === Callback_Outcome::PHASE_PROVIDER ) {
+			return ( $outcome->get_error_code() === 'access_denied' ) ? 'connection_cancelled' : 'unexpected_error';
+		}
+
+		if ( $outcome->get_error_code() === 'invalid_grant' ) {
+			return 'token_request_failed_invalid_grant';
+		}
+
+		if ( $outcome->get_error_code() === null ) {
+			return 'unexpected_error';
+		}
+
+		return 'token_request_failed';
 	}
 }
