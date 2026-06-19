@@ -9,7 +9,7 @@ export const MYYOAST_STORE_NAME = "yoast-seo/myyoast-connection";
 const REQUEST_TIMEOUT_MS = 30000;
 
 const ENDPOINTS = {
-	verify: { actionType: "verifyMyyoastConnection", method: "POST", path: "/yoast/v1/myyoast/verify" },
+	refreshStatus: { actionType: "refreshMyyoastConnectionStatus", method: "POST", path: "/yoast/v1/myyoast/refresh-status" },
 	connect: { actionType: "connectMyyoastConnection", method: "POST", path: "/yoast/v1/myyoast/register" },
 	update: { actionType: "updateMyyoastConnection", method: "PUT", path: "/yoast/v1/myyoast/registration" },
 	disconnect: { actionType: "disconnectMyyoastConnection", method: "DELETE", path: "/yoast/v1/myyoast/registration" },
@@ -101,7 +101,7 @@ const { setMyyoastStatus, startMyyoastAction, setMyyoastActionError, finishMyyoa
  * the matching control, mirrors the response into the slice, and returns a
  * result object the caller can use to drive UI notifications.
  *
- * @param {string} name The action name (verify/connect/update/disconnect).
+ * @param {string} name The action name (refreshStatus/connect/update/disconnect).
  * @returns {GeneratorFunction} The generator action.
  */
 // eslint-disable-next-line complexity
@@ -128,7 +128,7 @@ const createMyyoastAction = ( name ) => function* ( body ) {
 	}
 };
 
-const verifyMyyoastConnection = createMyyoastAction( "verify" );
+const refreshMyyoastConnectionStatus = createMyyoastAction( "refreshStatus" );
 const connectMyyoastConnection = createMyyoastAction( "connect" );
 const updateMyyoastConnection = createMyyoastAction( "update" );
 const disconnectMyyoastConnection = createMyyoastAction( "disconnect" );
@@ -193,7 +193,7 @@ const callEndpoint = async( endpoint, body ) => {
 
 export const myyoastConnectionActions = {
 	...slice.actions,
-	verifyMyyoastConnection,
+	refreshMyyoastConnectionStatus,
 	connectMyyoastConnection,
 	updateMyyoastConnection,
 	disconnectMyyoastConnection,
@@ -201,7 +201,7 @@ export const myyoastConnectionActions = {
 };
 
 export const myyoastConnectionControls = {
-	[ ENDPOINTS.verify.actionType ]: ( { payload } ) => callEndpoint( ENDPOINTS.verify, payload ),
+	[ ENDPOINTS.refreshStatus.actionType ]: ( { payload } ) => callEndpoint( ENDPOINTS.refreshStatus, payload ),
 	[ ENDPOINTS.connect.actionType ]: ( { payload } ) => callEndpoint( ENDPOINTS.connect, payload ),
 	[ ENDPOINTS.update.actionType ]: ( { payload } ) => callEndpoint( ENDPOINTS.update, payload ),
 	[ ENDPOINTS.disconnect.actionType ]: ( { payload } ) => callEndpoint( ENDPOINTS.disconnect, payload ),

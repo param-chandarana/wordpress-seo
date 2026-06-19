@@ -39,11 +39,11 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 
 	public const ROUTE_PREFIX = '/myyoast';
 
-	public const STATUS_ROUTE       = '/status';
-	public const VERIFY_ROUTE       = '/verify';
-	public const REGISTER_ROUTE     = '/register';
-	public const REGISTRATION_ROUTE = '/registration';
-	public const AUTHORIZE_ROUTE    = '/authorize';
+	public const STATUS_ROUTE         = '/status';
+	public const REFRESH_STATUS_ROUTE = '/refresh-status';
+	public const REGISTER_ROUTE       = '/register';
+	public const REGISTRATION_ROUTE   = '/registration';
+	public const AUTHORIZE_ROUTE      = '/authorize';
 
 	/**
 	 * The MyYoast client facade.
@@ -123,10 +123,10 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 
 		\register_rest_route(
 			Main::API_V1_NAMESPACE,
-			self::ROUTE_PREFIX . self::VERIFY_ROUTE,
+			self::ROUTE_PREFIX . self::REFRESH_STATUS_ROUTE,
 			[
 				'methods'             => 'POST',
-				'callback'            => [ $this, 'verify' ],
+				'callback'            => [ $this, 'refresh_status' ],
 				'permission_callback' => $permission_callback,
 			],
 		);
@@ -188,13 +188,13 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	}
 
 	/**
-	 * POST /myyoast/verify — verifies the registration with the server.
+	 * POST /myyoast/refresh-status — refreshes the registration status against the server.
 	 *
 	 * @return WP_REST_Response
 	 */
-	public function verify() {
+	public function refresh_status() {
 		try {
-			$this->myyoast_client->verify_registration();
+			$this->myyoast_client->refresh_registration_status();
 		} catch ( Throwable $e ) {
 			return $this->handle_exception( $e );
 		}

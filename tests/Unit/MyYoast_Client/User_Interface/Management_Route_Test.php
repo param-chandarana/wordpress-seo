@@ -149,7 +149,7 @@ final class Management_Route_Test extends TestCase {
 
 	/**
 	 * Tests that all routes are registered. Five register_rest_route calls
-	 * are made: /status (GET), /verify (POST), /register (POST),
+	 * are made: /status (GET), /refresh-status (POST), /register (POST),
 	 * /registration (PUT + DELETE on the same path), and /authorize (POST).
 	 *
 	 * @covers ::register_routes
@@ -197,42 +197,42 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that verify dispatches to the facade and returns a success payload.
+	 * Tests that refresh_status dispatches to the facade and returns a success payload.
 	 *
-	 * @covers ::verify
+	 * @covers ::refresh_status
 	 *
 	 * @return void
 	 */
-	public function test_verify_success() {
+	public function test_refresh_status_success() {
 		$this->provision();
-		$this->myyoast_client->shouldReceive( 'verify_registration' )->once()->andReturn( [] );
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )->once()->andReturn( [] );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$response = $this->instance->verify();
+		$response = $this->instance->refresh_status();
 
 		$this->assertInstanceOf( WP_REST_Response::class, $response );
 	}
 
 	/**
-	 * Tests that verify hitting Registration_Not_Found_Exception surfaces registration_gone.
+	 * Tests that refresh_status hitting Registration_Not_Found_Exception surfaces registration_gone.
 	 *
-	 * @covers ::verify
+	 * @covers ::refresh_status
 	 * @covers ::handle_exception
 	 *
 	 * @return void
 	 */
-	public function test_verify_with_registration_gone() {
+	public function test_refresh_status_with_registration_gone() {
 		$this->provision();
-		$this->myyoast_client->shouldReceive( 'verify_registration' )
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
 			->once()
 			->andThrow( new Registration_Not_Found_Exception( 'gone' ) );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$response = $this->instance->verify();
+		$response = $this->instance->refresh_status();
 
 		$this->assertInstanceOf( WP_REST_Response::class, $response );
 	}
@@ -248,7 +248,7 @@ final class Management_Route_Test extends TestCase {
 	 */
 	public function test_rate_limited_response_includes_retry_after_details() {
 		$this->provision();
-		$this->myyoast_client->shouldReceive( 'verify_registration' )
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
 			->once()
 			->andThrow( new Rate_Limited_Exception( 'slow down', 240 ) );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
@@ -261,7 +261,7 @@ final class Management_Route_Test extends TestCase {
 			},
 		);
 
-		$this->instance->verify();
+		$this->instance->refresh_status();
 
 		$this->assertIsArray( $captured );
 		$this->assertSame( 'rate_limited', $captured['error_code'] );
@@ -280,7 +280,7 @@ final class Management_Route_Test extends TestCase {
 	 */
 	public function test_rate_limited_response_omits_details_when_retry_after_missing() {
 		$this->provision();
-		$this->myyoast_client->shouldReceive( 'verify_registration' )
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
 			->once()
 			->andThrow( new Rate_Limited_Exception( 'slow down' ) );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
@@ -293,7 +293,7 @@ final class Management_Route_Test extends TestCase {
 			},
 		);
 
-		$this->instance->verify();
+		$this->instance->refresh_status();
 
 		$this->assertIsArray( $captured );
 		$this->assertSame( 'rate_limited', $captured['error_code'] );
@@ -301,7 +301,7 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests that verify maps each domain exception to a response (smoke test
+	 * Tests that refresh_status maps each domain exception to a response (smoke test
 	 * — exception-mapping coverage is per-branch but groups into one test).
 	 *
 	 * @covers ::handle_exception
@@ -326,11 +326,11 @@ final class Management_Route_Test extends TestCase {
 		];
 
 		foreach ( $exceptions as $exception ) {
-			$this->myyoast_client->shouldReceive( 'verify_registration' )
+			$this->myyoast_client->shouldReceive( 'refresh_registration_status' )
 				->once()
 				->andThrow( $exception );
 
-			$response = $this->instance->verify();
+			$response = $this->instance->refresh_status();
 
 			$this->assertInstanceOf( WP_REST_Response::class, $response );
 		}
@@ -471,7 +471,7 @@ final class Management_Route_Test extends TestCase {
 	 * not provisioned.
 	 *
 	 * Only register/update/authorize require the software statement and initial
-	 * access token; verify and deregister work without them and are covered by
+	 * access token; refresh-status and deregister work without them and are covered by
 	 * their own tests.
 	 *
 	 * @covers ::require_provisioned
@@ -493,21 +493,21 @@ final class Management_Route_Test extends TestCase {
 	}
 
 	/**
-	 * Tests verify works regardless of provisioning — it talks to MyYoast with
+	 * Tests refresh_status works regardless of provisioning — it talks to MyYoast with
 	 * the stored registration access token, not the software statement.
 	 *
-	 * @covers ::verify
+	 * @covers ::refresh_status
 	 *
 	 * @return void
 	 */
-	public function test_verify_works_when_not_provisioned() {
+	public function test_refresh_status_works_when_not_provisioned() {
 		$this->unprovision();
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $this->status_payload() );
-		$this->myyoast_client->shouldReceive( 'verify_registration' )->once();
+		$this->myyoast_client->shouldReceive( 'refresh_registration_status' )->once();
 
 		Mockery::mock( 'overload:' . WP_REST_Response::class );
 
-		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->verify() );
+		$this->assertInstanceOf( WP_REST_Response::class, $this->instance->refresh_status() );
 	}
 
 	/**

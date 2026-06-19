@@ -66,7 +66,7 @@ const formatRateLimitedMessage = ( seconds ) => {
 };
 
 const ACTION_DISPATCHERS = {
-	verify: "verifyMyyoastConnection",
+	refreshStatus: "refreshMyyoastConnectionStatus",
 	connect: "connectMyyoastConnection",
 	update: "updateMyyoastConnection",
 	disconnect: "disconnectMyyoastConnection",
@@ -94,7 +94,7 @@ const resolveErrorMessage = ( code, details ) => {
  * Runs a MyYoast management action: dispatches the slice action and, unless
  * silent, surfaces the outcome as inline card feedback.
  *
- * @param {string} actionName The action (verify/connect/update/disconnect).
+ * @param {string} actionName The action (refreshStatus/connect/update/disconnect).
  * @param {Object} [body] The request body.
  * @param {Object} [options] Options.
  * @param {boolean} [options.silent] When true, suppress feedback.
@@ -104,8 +104,8 @@ const resolveErrorMessage = ( code, details ) => {
 // eslint-disable-next-line complexity
 const runAction = async( actionName, body, options ) => {
 	// Serialize actions: they all mutate the same server-side registration, so a
-	// second action started while one is in flight (e.g. the mount-time verify
-	// overlapping a user click) would race on the shared status. Ignore it.
+	// second action started while one is in flight (e.g. the mount-time status
+	// refresh overlapping a user click) would race on the shared status. Ignore it.
 	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
 		return { ok: false, errorCode: "action_in_flight" };
 	}
@@ -222,13 +222,13 @@ export const MyyoastIntegration = () => {
 	const [ feedback, setFeedback ] = useState( null );
 	const [ isDisconnectOpen, , , openDisconnect, closeDisconnect ] = useToggleState( false );
 
-	// Auto-fired verify on mount: confirms with MyYoast that the stored
+	// Auto-fired status refresh on mount: confirms with MyYoast that the stored
 	// registration is still valid. Errors are silent; the response refreshes
 	// the local status, so Registration_Not_Found clears state and the card
 	// re-renders as "not connected".
 	useEffect( () => {
 		if ( status.isRegistered ) {
-			runAction( "verify", null, { silent: true } );
+			runAction( "refreshStatus", null, { silent: true } );
 		}
 	}, [] );
 
