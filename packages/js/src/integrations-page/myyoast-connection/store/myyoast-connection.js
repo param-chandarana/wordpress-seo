@@ -1,10 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 import apiFetch from "@wordpress/api-fetch";
-import { combineReducers, registerStore } from "@wordpress/data";
 import { get } from "lodash";
 
 export const MYYOAST_CONNECTION_NAME = "myyoastConnection";
-export const MYYOAST_STORE_NAME = "yoast-seo/myyoast-connection";
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -19,7 +17,7 @@ const ENDPOINTS = {
 /**
  * @returns {Object} The initial myyoastConnection state.
  */
-export const createInitialMyyoastConnectionState = () => ( {
+export const getInitialMyyoastConnectionState = () => ( {
 	status: null,
 	profileUrl: "",
 	actionInFlight: null,
@@ -66,7 +64,7 @@ export const transformStatus = ( payload ) => {
 
 const slice = createSlice( {
 	name: MYYOAST_CONNECTION_NAME,
-	initialState: createInitialMyyoastConnectionState(),
+	initialState: getInitialMyyoastConnectionState(),
 	reducers: {
 		setMyyoastStatus: ( state, { payload } ) => {
 			if ( payload ) {
@@ -223,37 +221,4 @@ export const myyoastConnectionSelectors = {
 	selectHasMyyoastConnection: state => get( state, "myyoastConnection.status", null ) !== null,
 };
 
-/**
- * Registers the standalone MyYoast connection store, seeded from the
- * `wpseoIntegrationsData.myyoast_connection` payload the integrations page
- * localizes. No-ops when the payload is absent (feature flag disabled) —
- * the card is not rendered in that case either.
- *
- * The slice state is nested under the `myyoastConnection` key so the
- * selectors keep the same shape they had inside the settings store.
- *
- * @returns {void}
- */
-export const registerMyyoastStore = () => {
-	const data = get( window, "wpseoIntegrationsData.myyoast_connection", null );
-	if ( ! data ) {
-		return;
-	}
-
-	registerStore( MYYOAST_STORE_NAME, {
-		reducer: combineReducers( { [ MYYOAST_CONNECTION_NAME ]: slice.reducer } ),
-		actions: myyoastConnectionActions,
-		selectors: myyoastConnectionSelectors,
-		controls: myyoastConnectionControls,
-		initialState: {
-			[ MYYOAST_CONNECTION_NAME ]: {
-				...createInitialMyyoastConnectionState(),
-				status: transformStatus( data.initialStatus ),
-				profileUrl: data.profileUrl || "",
-				pendingCallbackOutcome: data.callbackOutcome || null,
-			},
-		},
-	} );
-};
-
-export default slice.reducer;
+export const myyoastConnectionReducer = slice.reducer;

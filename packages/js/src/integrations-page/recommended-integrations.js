@@ -4,7 +4,7 @@ import { safeCreateInterpolateElement } from "../helpers/i18n";
 import { ReactComponent as SemrushLogo } from "../../images/semrush-logo.svg";
 import { ReactComponent as WincherLogo } from "../../images/wincher-logo.svg";
 import { getInitialState, getIsMultisiteAvailable, getIsNetworkControlEnabled, updateIntegrationState } from "./helper";
-import { MyyoastIntegration } from "./myyoast-integration";
+import { MyyoastIntegration } from "./myyoast-connection/myyoast-integration";
 import { SiteKitIntegration } from "./site-kit-integration";
 import { ToggleableIntegration } from "./toggleable-integration";
 

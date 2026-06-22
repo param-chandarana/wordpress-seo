@@ -3,7 +3,7 @@ import domReady from "@wordpress/dom-ready";
 
 import { Root } from "@yoast/ui-library";
 import IntegrationsGrid from "./integrations-page/integrations-grid";
-import { registerMyyoastStore } from "./integrations-page/myyoast-store";
+import { registerMyyoastStore } from "./integrations-page/myyoast-connection/store";
 import { registerReactComponent, renderReactRoot } from "./helpers/reactRoot";
 
 window.YoastSEO = window.YoastSEO || {};

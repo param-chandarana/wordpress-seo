@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
 import CheckIcon from "@heroicons/react/solid/CheckIcon";
 import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
@@ -8,44 +7,72 @@ import { useCallback, useEffect, useId, useState } from "@wordpress/element";
 import { __, _n, sprintf } from "@wordpress/i18n";
 import { Alert, Button, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
 import PropTypes from "prop-types";
-import { ReactComponent as MyYoastLogo } from "../../images/myyoast-logo.svg";
+import { ReactComponent as MyYoastLogo } from "../../../images/myyoast-logo.svg";
 import { MyyoastConnectionDisconnectModal } from "./myyoast-disconnect-modal";
-import { MYYOAST_STORE_NAME } from "./myyoast-store";
-import { Card } from "./tailwind-components/card";
+import { MYYOAST_STORE_NAME } from "./constants";
+import { Card } from "../tailwind-components/card";
 
 // Placeholder until the final MyYoast integrations article URL is provided.
 const LEARN_MORE_LINK = "https://yoa.st/myyoast-connection";
 
 /**
- * Returns the error and success message map keyed by the machine codes the
- * backend emits (`error_code` for errors, `message_key` for successes).
+ * Resolves the user-facing message for a machine code the backend emits
+ * (`error_code` for errors, `message_key` for successes).
  *
- * Built lazily inside a function so `__()` is called at call time rather than
- * at module load — keeps locale switching working.
+ * A switch rather than a map so only the matched string is translated, and
+ * `__()` runs at call time rather than module load — keeping locale switching
+ * working. Unknown codes fall through to the generic error.
  *
- * @returns {Object<string, string>} The message map.
+ * @param {string} code The backend code.
+ * @returns {string} The translated message.
  */
-const buildMessages = () => ( {
-	not_provisioned: __( "Your server doesn't support the MyYoast connection. Update Yoast SEO to the latest version. If the issue persists after updating, contact support.", "wordpress-seo" ),
-	registration_gone: __( "MyYoast no longer recognizes this site. Connect this site to MyYoast again to restore the connection.", "wordpress-seo" ),
-	rate_limited: __( "MyYoast has had a lot of connection attempts from this site or network. Please wait a few minutes and try again.", "wordpress-seo" ),
-	server_capability: __( "MyYoast doesn't support a feature this version of Yoast SEO needs. Update Yoast SEO to the latest version. If the issue persists, contact support.", "wordpress-seo" ),
-	myyoast_unreachable: __( "Couldn't reach MyYoast from this server. Check your server's outbound network access, then try again. If MyYoast is having issues, wait a few minutes and retry.", "wordpress-seo" ),
-	token_request_failed_invalid_grant: __( "MyYoast rejected the credentials stored for this site. Disconnect and connect this site again to restore the connection.", "wordpress-seo" ),
-	token_request_failed: __( "Something went wrong while talking to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
-	token_storage_failed: __( "Couldn't save the new credentials on this site. Make sure your WordPress database is writable, then try again.", "wordpress-seo" ),
-	invalid_resource: __( "Something went wrong. Refresh the page and try again. If the problem keeps happening, contact support.", "wordpress-seo" ),
-	registration_failed: __( "Couldn't connect this site to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
-	unknown_redirect_uri: __( "Couldn't verify this site because it's no longer recognized. Refresh the page and try again.", "wordpress-seo" ),
-	invalid_user: __( "You need to be signed in to verify this site.", "wordpress-seo" ),
-	connection_cancelled: __( "Connection cancelled. You can try again whenever you're ready.", "wordpress-seo" ),
-	timeout: __( "Request to MyYoast timed out. Please try again.", "wordpress-seo" ),
-	unexpected_error: __( "Something went wrong. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" ),
-	connect_success: __( "This site is now connected to MyYoast.", "wordpress-seo" ),
-	update_success: __( "Connection updated to match this site's current URL.", "wordpress-seo" ),
-	disconnect_success: __( "This site is no longer connected to MyYoast.", "wordpress-seo" ),
-	verify_success: __( "This site is now verified.", "wordpress-seo" ),
-} );
+// eslint-disable-next-line complexity
+const messageFor = ( code ) => {
+	switch ( code ) {
+		case "not_provisioned":
+			return __( "Your server doesn't support the MyYoast connection. Update Yoast SEO to the latest version. If the issue persists after updating, contact support.", "wordpress-seo" );
+		case "registration_gone":
+			return __( "MyYoast no longer recognizes this site. Connect this site to MyYoast again to restore the connection.", "wordpress-seo" );
+		case "rate_limited":
+			return __( "MyYoast has had a lot of connection attempts from this site or network. Please wait a few minutes and try again.", "wordpress-seo" );
+		case "server_capability":
+			return __( "MyYoast doesn't support a feature this version of Yoast SEO needs. Update Yoast SEO to the latest version. If the issue persists, contact support.", "wordpress-seo" );
+		case "myyoast_unreachable":
+			return __( "Couldn't reach MyYoast from this server. Check your server's outbound network access, then try again. If MyYoast is having issues, wait a few minutes and retry.", "wordpress-seo" );
+		case "token_request_failed_invalid_grant":
+			return __( "MyYoast rejected the credentials stored for this site. Disconnect and connect this site again to restore the connection.", "wordpress-seo" );
+		case "token_request_failed":
+			return __( "Something went wrong while talking to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" );
+		case "token_storage_failed":
+			return __( "Couldn't save the new credentials on this site. Make sure your WordPress database is writable, then try again.", "wordpress-seo" );
+		case "invalid_resource":
+			return __( "Something went wrong. Refresh the page and try again. If the problem keeps happening, contact support.", "wordpress-seo" );
+		case "registration_failed":
+			return __( "Couldn't connect this site to MyYoast. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" );
+		case "unknown_redirect_uri":
+			return __( "Couldn't verify this site because it's no longer recognized. Refresh the page and try again.", "wordpress-seo" );
+		case "invalid_user":
+			return __( "You need to be signed in to verify this site.", "wordpress-seo" );
+		case "connection_cancelled":
+			return __( "Connection cancelled. You can try again whenever you're ready.", "wordpress-seo" );
+		case "timeout":
+			return __( "Request to MyYoast timed out. Please try again.", "wordpress-seo" );
+		case "connect_success":
+			return __( "This site is now connected to MyYoast.", "wordpress-seo" );
+		case "update_success":
+			return __( "Connection updated to match this site's current URL.", "wordpress-seo" );
+		case "disconnect_success":
+			return __( "This site is no longer connected to MyYoast.", "wordpress-seo" );
+		case "verify_success":
+			return __( "This site is now verified.", "wordpress-seo" );
+		default:
+			return __( "Something went wrong. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" );
+	}
+};
+
+// Success keys the backend may send. Used to gate success feedback so an
+// unrecognized key doesn't fall through to `messageFor`'s generic error string.
+const SUCCESS_MESSAGE_KEYS = new Set( [ "connect_success", "update_success", "disconnect_success", "verify_success" ] );
 
 /**
  * Formats the rate-limit message in minutes or hours, with the correct
@@ -80,14 +107,13 @@ const ACTION_DISPATCHERS = {
  * @returns {string} The translated message.
  */
 const resolveErrorMessage = ( code, details ) => {
-	const messages = buildMessages();
 	if ( code === "rate_limited" ) {
 		const seconds = Number( details?.retry_after_seconds );
 		if ( Number.isFinite( seconds ) && seconds > 0 ) {
 			return formatRateLimitedMessage( seconds );
 		}
 	}
-	return messages[ code ] ?? messages.unexpected_error;
+	return messageFor( code );
 };
 
 /**
@@ -116,11 +142,8 @@ const runAction = async( actionName, body, options ) => {
 		return result;
 	}
 
-	if ( result.ok && result.messageKey ) {
-		const message = buildMessages()[ result.messageKey ];
-		if ( message ) {
-			options?.onFeedback?.( { variant: "success", message } );
-		}
+	if ( result.ok && SUCCESS_MESSAGE_KEYS.has( result.messageKey ) ) {
+		options?.onFeedback?.( { variant: "success", message: messageFor( result.messageKey ) } );
 	} else if ( ! result.ok ) {
 		const message = resolveErrorMessage( result.errorCode, result.details );
 		store.setMyyoastActionError( { actionName, errorCode: result.errorCode, message } );
@@ -199,7 +222,7 @@ const StatusFooter = ( { connectionLost, verificationNeeded } ) => {
 	return (
 		<p className="yst-flex yst-items-center yst-justify-between yst-text-slate-700 yst-font-medium">
 			{ __( "Site connected", "wordpress-seo" ) }
-			<CheckIcon className={ `${ iconClass } yst-text-green-500` } { ...svgAriaProps } />
+			<CheckIcon className={ `${ iconClass } yst-text-green-400` } { ...svgAriaProps } />
 		</p>
 	);
 };
@@ -241,10 +264,7 @@ export const MyyoastIntegration = () => {
 			return;
 		}
 		const { kind, key } = pendingCallbackOutcome;
-		const message = buildMessages()[ key ];
-		if ( message ) {
-			setFeedback( { variant: kind === "success" ? "success" : "error", message } );
-		}
+		setFeedback( { variant: kind === "success" ? "success" : "error", message: messageFor( key ) } );
 		dispatch( MYYOAST_STORE_NAME ).clearMyyoastCallbackOutcome();
 	}, [ pendingCallbackOutcome ] );
 
