@@ -158,6 +158,10 @@ const runAction = async( actionName, body, options ) => {
  * navigates the browser there. The backend resolves which registered redirect
  * URI to use. Errors surface as inline card feedback.
  *
+ * The current page is passed as the return URL so the OAuth callback sends the
+ * user back to the integrations page. The backend validates it and ignores it
+ * when off-site or invalid.
+ *
  * @param {function} onFeedback Receives `{ variant, message }` to show in the card.
  * @returns {Promise<void>} Resolves once the navigation has been kicked off.
  */
@@ -166,7 +170,7 @@ const runAuthorize = async( onFeedback ) => {
 		return;
 	}
 	const store = dispatch( MYYOAST_STORE_NAME );
-	const result = await store.authorizeMyyoastSite();
+	const result = await store.authorizeMyyoastSite( { returnUrl: window.location.href } );
 
 	if ( result.ok && result.authorizeUrl ) {
 		window.location.assign( result.authorizeUrl );

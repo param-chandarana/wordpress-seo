@@ -142,11 +142,12 @@ const disconnectMyyoastConnection = createMyyoastAction( "disconnect" );
  * `authorize_url` the browser should be navigated to; the caller decides how to
  * do that. On failure the slice's actionError is set, mirroring the other actions.
  *
- * @param {string} [returnUrl] The URL to return to after the flow completes.
+ * @param {Object} [options] The action options.
+ * @param {string} [options.returnUrl] The URL to return to after the flow completes.
  * @returns {GeneratorFunction} The generator action.
  */
 // eslint-disable-next-line complexity
-const authorizeMyyoastSite = function* ( returnUrl ) {
+const authorizeMyyoastSite = function* ( { returnUrl } = {} ) {
 	yield startMyyoastAction( "authorize" );
 	try {
 		// eslint-disable-next-line camelcase -- snake_case matches the REST endpoint's request contract.

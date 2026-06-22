@@ -253,7 +253,7 @@ describe( "management actions", () => {
 
 	describe( "authorizeMyyoastSite", () => {
 		it( "sends the return_url and returns the authorize URL on success", () => {
-			const generator = myyoastConnectionActions.authorizeMyyoastSite( "https://example.com/admin" );
+			const generator = myyoastConnectionActions.authorizeMyyoastSite( { returnUrl: "https://example.com/admin" } );
 
 			expect( generator.next().value ).toEqual( { type: "myyoastConnection/startMyyoastAction", payload: "authorize" } );
 
