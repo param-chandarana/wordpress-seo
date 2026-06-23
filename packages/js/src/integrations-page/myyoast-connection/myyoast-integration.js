@@ -383,7 +383,7 @@ export const MyyoastIntegration = () => {
 						) }
 
 						{ status.isProvisioned && status.isRegistered && (
-							<div className="yst-flex yst-flex-col yst-gap-3 yst-pt-2 yst-border-t yst-border-slate-200">
+							<div className="yst-flex yst-flex-col yst-gap-3">
 								<div>
 									<h5 className="yst-font-medium yst-text-slate-900">
 										{ __( "Site connection", "wordpress-seo" ) }
