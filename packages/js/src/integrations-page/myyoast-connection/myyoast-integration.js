@@ -3,9 +3,9 @@ import CheckIcon from "@heroicons/react/solid/CheckIcon";
 import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
 import ExclamationIcon from "@heroicons/react/solid/ExclamationIcon";
 import { dispatch, select, useSelect } from "@wordpress/data";
-import { useCallback, useEffect, useId, useState } from "@wordpress/element";
+import { useCallback, useEffect, useId, useRef, useState } from "@wordpress/element";
 import { __, _n, sprintf } from "@wordpress/i18n";
-import { Alert, Button, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
+import { Alert, Button, Notifications, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 import { ReactComponent as MyYoastLogo } from "../../../images/myyoast-logo.svg";
 import { safeCreateInterpolateElement } from "../../helpers/i18n";
@@ -122,13 +122,13 @@ const resolveErrorMessage = ( code, details ) => {
 
 /**
  * Runs a MyYoast management action: dispatches the slice action and, unless
- * silent, surfaces the outcome as inline card feedback.
+ * silent, surfaces the outcome as a toast.
  *
  * @param {string} actionName The action (refreshStatus/connect/update/disconnect).
  * @param {Object} [body] The request body.
  * @param {Object} [options] Options.
  * @param {boolean} [options.silent] When true, suppress feedback.
- * @param {function} [options.onFeedback] Receives `{ variant, message }` to show in the card.
+ * @param {function} [options.onFeedback] Receives `{ variant, message }` to show as a toast.
  * @returns {Promise<Object>} The slice action's result.
  */
 // eslint-disable-next-line complexity
@@ -160,13 +160,13 @@ const runAction = async( actionName, body, options ) => {
 /**
  * Starts the verify-site flow: asks the backend for an authorization URL and
  * navigates the browser there. The backend resolves which registered redirect
- * URI to use. Errors surface as inline card feedback.
+ * URI to use. Errors surface as a toast.
  *
  * The current page is passed as the return URL so the OAuth callback sends the
  * user back to the integrations page. The backend validates it and ignores it
  * when off-site or invalid.
  *
- * @param {function} onFeedback Receives `{ variant, message }` to show in the card.
+ * @param {function} onFeedback Receives `{ variant, message }` to show as a toast.
  * @returns {Promise<boolean>} True once a redirect has been kicked off (the page
  *                             is navigating away); false when we stay on the page.
  */
@@ -254,7 +254,16 @@ export const MyyoastIntegration = () => {
 	const status = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionStatus(), [] );
 	const actionInFlight = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
 	const pendingCallbackOutcome = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
+	// The OAuth flow outcome (connect/verify/disconnect/refresh and the callback
+	// return) surfaces as a transient toast. Each new outcome carries a fresh id
+	// so the toast remounts and re-animates even when the message is unchanged.
 	const [ feedback, setFeedback ] = useState( null );
+	const feedbackId = useRef( 0 );
+	const showFeedback = useCallback( ( next ) => {
+		feedbackId.current += 1;
+		setFeedback( { ...next, id: feedbackId.current } );
+	}, [] );
+	const dismissFeedback = useCallback( () => setFeedback( null ), [] );
 	// True only while the connect → authorize auto-flow is running: registration
 	// succeeds (status becomes registered-but-unverified) before we redirect to
 	// MyYoast, and we don't want to flash the "Verification needed" notice for
@@ -272,18 +281,18 @@ export const MyyoastIntegration = () => {
 		}
 	}, [] );
 
-	// Surfaces the one-shot feedback stashed by the OAuth callback handler
-	// (success or error). The transient is consumed server-side on read, so
-	// after we've shown it we clear it from the slice to avoid re-firing on
-	// subsequent renders.
+	// Surfaces the one-shot outcome stashed by the OAuth callback handler
+	// (success or error) as a toast. The transient is consumed server-side on
+	// read, so after we've shown it we clear it from the slice to avoid
+	// re-firing on subsequent renders.
 	useEffect( () => {
 		if ( ! pendingCallbackOutcome ) {
 			return;
 		}
 		const { kind, key } = pendingCallbackOutcome;
-		setFeedback( { variant: kind === "success" ? "success" : "error", message: messageFor( key ) } );
+		showFeedback( { variant: kind === "success" ? "success" : "error", message: messageFor( key ) } );
 		dispatch( MYYOAST_STORE_NAME ).clearMyyoastCallbackOutcome();
-	}, [ pendingCallbackOutcome ] );
+	}, [ pendingCallbackOutcome, showFeedback ] );
 
 	// Connecting only registers the site as an OAuth client; the connection is
 	// not usable until one user completes an authorization-code grant. So on a
@@ -300,25 +309,25 @@ export const MyyoastIntegration = () => {
 		const result = await runAction( "connect", null, { silent: true } );
 		if ( ! result.ok ) {
 			const message = resolveErrorMessage( result.errorCode, result.details );
-			setFeedback( { variant: "error", message } );
+			showFeedback( { variant: "error", message } );
 			setIsConnecting( false );
 			return;
 		}
 		// Registration succeeded; continue straight into the authorization-code
 		// flow. The backend resolves which registered redirect URI to use.
-		const redirecting = await runAuthorize( setFeedback );
+		const redirecting = await runAuthorize( showFeedback );
 		// Only clear when we're staying on the page: `window.location.assign` is
 		// async, so the page keeps rendering while MyYoast loads. Clearing now
 		// would flash the verification notice during that tail.
 		if ( ! redirecting ) {
 			setIsConnecting( false );
 		}
-	}, [] );
-	const handleReconnect = useCallback( () => runAction( "update", null, { onFeedback: setFeedback } ), [] );
+	}, [ showFeedback ] );
+	const handleReconnect = useCallback( () => runAction( "update", null, { onFeedback: showFeedback } ), [ showFeedback ] );
 	const handleDisconnectConfirm = useCallback( () => {
 		closeDisconnect();
-		runAction( "disconnect", null, { onFeedback: setFeedback } );
-	}, [] );
+		runAction( "disconnect", null, { onFeedback: showFeedback } );
+	}, [ showFeedback ] );
 
 	const redirectUris = Array.isArray( status.redirectUris ) ? status.redirectUris : [];
 	// "Connection lost" takes precedence over "verification needed": once the
@@ -335,9 +344,9 @@ export const MyyoastIntegration = () => {
 
 	const handleVerify = useCallback( () => {
 		if ( firstUnverified ) {
-			runAuthorize( setFeedback );
+			runAuthorize( showFeedback );
 		}
-	}, [ firstUnverified ] );
+	}, [ firstUnverified, showFeedback ] );
 
 	return (
 		<>
@@ -371,10 +380,6 @@ export const MyyoastIntegration = () => {
 							{ __( "Learn more", "wordpress-seo" ) }
 							<ArrowNarrowRightIcon className="yst-h-4 yst-w-4" />
 						</a>
-
-						{ feedback && (
-							<Alert variant={ feedback.variant }>{ feedback.message }</Alert>
-						) }
 
 						{ ! status.isProvisioned && (
 							<Alert variant="warning">
@@ -475,6 +480,21 @@ export const MyyoastIntegration = () => {
 				onClose={ closeDisconnect }
 				onConfirm={ handleDisconnectConfirm }
 			/>
+
+			<Notifications position="bottom-left">
+				{ feedback && (
+					<Notifications.Notification
+						// Keyed on the per-outcome id so a new outcome remounts the toast and re-animates.
+						key={ feedback.id }
+						id={ `myyoast-feedback-${ feedback.id }` }
+						variant={ feedback.variant }
+						description={ feedback.message }
+						onDismiss={ dismissFeedback }
+						autoDismiss={ feedback.variant === "success" ? 5000 : null }
+						dismissScreenReaderLabel={ __( "Dismiss", "wordpress-seo" ) }
+					/>
+				) }
+			</Notifications>
 		</>
 	);
 };
