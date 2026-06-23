@@ -163,22 +163,26 @@ const runAction = async( actionName, body, options ) => {
  * when off-site or invalid.
  *
  * @param {function} onFeedback Receives `{ variant, message }` to show in the card.
- * @returns {Promise<void>} Resolves once the navigation has been kicked off.
+ * @returns {Promise<boolean>} True once a redirect has been kicked off (the page
+ *                             is navigating away); false when we stay on the page.
  */
 const runAuthorize = async( onFeedback ) => {
 	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
-		return;
+		return false;
 	}
 	const store = dispatch( MYYOAST_STORE_NAME );
 	const result = await store.authorizeMyyoastSite( { returnUrl: window.location.href } );
 
 	if ( result.ok && result.authorizeUrl ) {
 		window.location.assign( result.authorizeUrl );
-		return;
+		// The navigation is async — the page keeps rendering until MyYoast loads.
+		// Report that a redirect started so callers don't restore in-page state.
+		return true;
 	}
 
 	const message = resolveErrorMessage( result.errorCode, result.details );
 	onFeedback?.( { variant: "error", message } );
+	return false;
 };
 
 /**
@@ -247,6 +251,11 @@ export const MyyoastIntegration = () => {
 	const actionInFlight = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
 	const pendingCallbackOutcome = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
 	const [ feedback, setFeedback ] = useState( null );
+	// True only while the connect → authorize auto-flow is running: registration
+	// succeeds (status becomes registered-but-unverified) before we redirect to
+	// MyYoast, and we don't want to flash the "Verification needed" notice for
+	// that gap. Scoped to this flow so a deliberate verify click still shows it.
+	const [ isConnecting, setIsConnecting ] = useState( false );
 	const [ isDisconnectOpen, , , openDisconnect, closeDisconnect ] = useToggleState( false );
 
 	// Auto-fired status refresh on mount: confirms with MyYoast that the stored
@@ -278,6 +287,9 @@ export const MyyoastIntegration = () => {
 	// user to MyYoast to sign in rather than leaving them on the unverified
 	// "Verification needed" state. A failed registration just shows its error.
 	const handleConnect = useCallback( async() => {
+		// Mark the combined flow so the registered-but-unverified gap between
+		// registration and the redirect doesn't flash the verification notice.
+		setIsConnecting( true );
 		// Register silently: on success we redirect to MyYoast immediately, so a
 		// transient "connected" message would only flash before the page leaves.
 		// A failure still needs to be shown, so surface only that.
@@ -285,11 +297,18 @@ export const MyyoastIntegration = () => {
 		if ( ! result.ok ) {
 			const message = resolveErrorMessage( result.errorCode, result.details );
 			setFeedback( { variant: "error", message } );
+			setIsConnecting( false );
 			return;
 		}
 		// Registration succeeded; continue straight into the authorization-code
 		// flow. The backend resolves which registered redirect URI to use.
-		await runAuthorize( setFeedback );
+		const redirecting = await runAuthorize( setFeedback );
+		// Only clear when we're staying on the page: `window.location.assign` is
+		// async, so the page keeps rendering while MyYoast loads. Clearing now
+		// would flash the verification notice during that tail.
+		if ( ! redirecting ) {
+			setIsConnecting( false );
+		}
 	}, [] );
 	const handleReconnect = useCallback( () => runAction( "update", null, { onFeedback: setFeedback } ), [] );
 	const handleDisconnectConfirm = useCallback( () => {
@@ -306,7 +325,9 @@ export const MyyoastIntegration = () => {
 	// several are connected — verifying them all clears it. Suppressed while the
 	// connection is lost.
 	const firstUnverified = connectionLost ? null : redirectUris.find( ( entry ) => ! entry.isVerified ) ?? null;
-	const verificationNeeded = Boolean( firstUnverified );
+	// Suppressed during the connect → authorize auto-flow: registration leaves the
+	// site registered-but-unverified for the moment before the redirect fires.
+	const verificationNeeded = Boolean( firstUnverified ) && ! isConnecting;
 
 	const handleVerify = useCallback( () => {
 		if ( firstUnverified ) {
