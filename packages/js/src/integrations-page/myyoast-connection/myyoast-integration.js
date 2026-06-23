@@ -223,7 +223,7 @@ const StatusFooter = ( { connectionLost, verificationNeeded } ) => {
 					<TooltipTrigger as="span" ariaDescribedby={ tooltipId } className="yst-inline-flex">
 						<ExclamationIcon className={ `${ iconClass } yst-text-amber-500` } { ...svgAriaProps } />
 					</TooltipTrigger>
-					<TooltipWithContext id={ tooltipId } className="yst-max-w-60 yst-z-50 yst-text-center" position="top">
+					<TooltipWithContext id={ tooltipId } className="yst-max-w-48 yst-z-50 yst-text-center" position="top-left">
 						{ __( "Sign in to MyYoast to finish setting up this connection so everything works as expected.", "wordpress-seo" ) }
 					</TooltipWithContext>
 				</TooltipContainer>
