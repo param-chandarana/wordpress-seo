@@ -62,7 +62,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	 *
 	 * @var string
 	 */
-	private const REFRESH_THROTTLE_TRANSIENT_PREFIX = 'wpseo_myyoast_refresh_throttle_';
+	private const REFRESH_THROTTLE_TRANSIENT_PREFIX = 'wpseo_myyoast_refresh_throttle';
 
 	/**
 	 * The MyYoast client facade.
@@ -488,7 +488,7 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 	private function get_refresh_throttle_key(): string {
 		return \sprintf(
 			'%s_%s',
-			\rtrim( self::REFRESH_THROTTLE_TRANSIENT_PREFIX, '_' ),
+			self::REFRESH_THROTTLE_TRANSIENT_PREFIX,
 			$this->issuer_config->get_issuer_key(),
 		);
 	}
