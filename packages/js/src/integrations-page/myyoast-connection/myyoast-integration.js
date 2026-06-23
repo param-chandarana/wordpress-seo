@@ -8,6 +8,7 @@ import { __, _n, sprintf } from "@wordpress/i18n";
 import { Alert, Button, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 import { ReactComponent as MyYoastLogo } from "../../../images/myyoast-logo.svg";
+import { safeCreateInterpolateElement } from "../../helpers/i18n";
 import { MyyoastConnectionDisconnectModal } from "./myyoast-disconnect-modal";
 import { MYYOAST_STORE_NAME } from "./constants";
 import { Card } from "../tailwind-components/card";
@@ -347,10 +348,18 @@ export const MyyoastIntegration = () => {
 				<Card.Content>
 					<div className="yst-flex yst-flex-col yst-gap-4">
 						<h4 className="yst-text-base yst-font-medium yst-text-[#111827] yst-leading-tight">
-							{ "MyYoast" }
+							{ safeCreateInterpolateElement(
+								sprintf(
+									/* translators: 1: bold open tag; 2: bold close tag. */
+									__( "Unlock more from Yoast with %1$sMyYoast%2$s", "wordpress-seo" ),
+									"<strong>",
+									"</strong>"
+								),
+								{ strong: <strong /> }
+							) }
 						</h4>
 						<p className="yst-text-slate-600">
-							{ __( "Connect your site to MyYoast to enable AI features, manage your Yoast products, and simplify setup.", "wordpress-seo" ) }
+							{ __( "Connect your site to MyYoast so Yoast AI works even when your site is offline, behind a firewall, or with the REST API disabled.", "wordpress-seo" ) }
 						</p>
 
 						<a
@@ -402,7 +411,7 @@ export const MyyoastIntegration = () => {
 									<Alert variant="error">
 										<div className="yst-space-y-2">
 											<p className="yst-font-medium">{ __( "Connection lost", "wordpress-seo" ) }</p>
-											<p>{ __( "Domain connection lost, try to reconnect.", "wordpress-seo" ) }</p>
+											<p>{ __( "Your site's URL changed since the connection with MyYoast was made. Please reconnect.", "wordpress-seo" ) }</p>
 											<Button
 												type="button"
 												size="small"
