@@ -64,7 +64,10 @@ const messageFor = ( code ) => {
 		case "disconnect_success":
 			return __( "This site is no longer connected to MyYoast.", "wordpress-seo" );
 		case "verify_success":
-			return __( "This site is now verified.", "wordpress-seo" );
+			// Emitted by the OAuth callback for both first-time setup and a
+			// standalone re-verify, so the copy describes the end state rather
+			// than the "verify" action.
+			return __( "Your MyYoast connection is now active.", "wordpress-seo" );
 		default:
 			return __( "Something went wrong. Try again in a moment. If the problem keeps happening, update Yoast SEO or contact support.", "wordpress-seo" );
 	}
