@@ -603,7 +603,7 @@ class Client_Registration implements Client_Registration_Interface, LoggerAwareI
 	 *
 	 * @return int|null Seconds until retry, or null when absent or unparseable.
 	 */
-	private function get_retry_after_seconds( $result ): ?int {
+	private function get_retry_after_seconds( HTTP_Response $result ): ?int {
 		$headers = $result->get_headers();
 		return Rate_Limited_Exception::parse_retry_after( ( $headers['retry-after'] ?? null ) );
 	}
