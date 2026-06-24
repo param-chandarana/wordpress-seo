@@ -11,9 +11,9 @@ use Yoast\WP\SEO\MyYoast_Client\User_Interface\OAuth_Callback_Integration;
 /**
  * WordPress implementation of the redirect URI provider.
  *
- * The canonical redirect URI is the Yoast admin page with the OAuth callback marker query
- * var. Site owners and plugins can register additional URIs and override the per-flow embed
- * URI through filters.
+ * The canonical redirect URI is this site's `admin-post.php` OAuth callback endpoint, exposed
+ * by `OAuth_Callback_Integration::get_callback_url()`. Site owners and plugins can register
+ * additional URIs and override the per-flow embed URI through filters.
  */
 class Redirect_URI_Provider implements Redirect_URI_Provider_Interface {
 

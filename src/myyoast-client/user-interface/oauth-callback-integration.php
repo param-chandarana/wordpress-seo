@@ -21,9 +21,9 @@ use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Callback_Handler;
  * the outcome for one-shot surfacing), and redirects the user to the
  * `return_url` they were sent off from.
  *
- * The base client defaults its redirect URI to an admin page; we replace that
- * with this endpoint through the redirect-URI provider's filters so the
- * callback never depends on a specific page being loaded.
+ * This endpoint's URL is the canonical OAuth redirect URI: the redirect-URI
+ * provider resolves it directly from `get_callback_url()`, so the callback
+ * never depends on a specific admin page being loaded.
  */
 class OAuth_Callback_Integration implements Integration_Interface {
 

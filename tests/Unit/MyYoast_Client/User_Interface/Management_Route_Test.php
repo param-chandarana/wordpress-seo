@@ -204,7 +204,7 @@ final class Management_Route_Test extends TestCase {
 	 * Tests GET /myyoast/status.
 	 *
 	 * @covers ::get_status
-	 * @covers ::respond_with_status
+	 * @covers ::respond_with_connection_status
 	 *
 	 * @return void
 	 */
