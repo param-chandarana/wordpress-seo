@@ -11,10 +11,11 @@ import { STORE_NAME_EDITOR } from "../../constants";
  *                                  Defaults to the block editor's store; pass a different store
  *                                  name when rendering outside the block editor (e.g. the AI
  *                                  consent screen on the user profile page).
+ * @param {string} [className] An optional class name.
  *
  * @returns {JSX.Element} The element.
  */
-export const GenericAlert = ( { linkStoreName = STORE_NAME_EDITOR, className } ) => {
+export const GenericAlert = ( { linkStoreName = STORE_NAME_EDITOR, className = "" } ) => {
 	const commonErrorsLink = useSelect( select => select( linkStoreName ).selectLink( "https://yoa.st/ai-common-errors" ), [ linkStoreName ] );
 	const supportLink = useSelect( select => select( linkStoreName ).selectAdminLink( "?page=wpseo_page_support" ), [ linkStoreName ] );
 
