@@ -108,7 +108,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
 
-		$method  = $request->is_post() ? 'POST' : 'GET';
+		$method  = $request->get_http_method();
 		$url     = $this->api_client->get_url( $request->get_action_path() );
 		$user_id = (string) $user->ID;
 
@@ -117,7 +117,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 			'timeout' => $this->api_client->get_request_timeout(),
 		];
 
-		if ( $request->is_post() ) {
+		if ( $method === Request::METHOD_POST ) {
 			$body            = \array_merge( $request->get_body(), [ 'user_id' => $user_id ] );
 			$options['body'] = WPSEO_Utils::format_json_encode( $body );
 		}

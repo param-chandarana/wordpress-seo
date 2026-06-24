@@ -216,7 +216,7 @@ final class AI_Request_Sender_Test extends TestCase {
 					static function ( $request ) use ( $content ) {
 						return $request instanceof Request
 							&& $request->get_action_path() === '/content-planner/next-post-outline'
-							&& $request->is_post() === true
+							&& $request->get_http_method() === Request::METHOD_POST
 							&& $request->get_headers() === [ 'X-Yst-Cohort' => 'gutenberg' ]
 							&& $request->get_body() === [
 								'subject' => [
@@ -261,7 +261,7 @@ final class AI_Request_Sender_Test extends TestCase {
 					static function ( $request ) use ( $content ) {
 						return $request instanceof Request
 							&& $request->get_action_path() === '/content-planner/next-post-suggestions'
-							&& $request->is_post() === true
+							&& $request->get_http_method() === Request::METHOD_POST
 							&& $request->get_headers() === [ 'X-Yst-Cohort' => 'gutenberg' ]
 							&& $request->get_body() === [
 								'subject' => [
@@ -326,7 +326,7 @@ final class AI_Request_Sender_Test extends TestCase {
 		if ( $request->get_action_path() !== '/openai/suggestions/seo-title' ) {
 			return false;
 		}
-		if ( $request->is_post() !== true ) {
+		if ( $request->get_http_method() !== Request::METHOD_POST ) {
 			return false;
 		}
 		if ( $request->get_headers() !== [ 'X-Yst-Cohort' => 'gutenberg' ] ) {
@@ -364,7 +364,7 @@ final class AI_Request_Sender_Test extends TestCase {
 					static function ( $request ) use ( $period ) {
 						return $request instanceof Request
 							&& $request->get_action_path() === '/usage/' . $period
-							&& $request->is_post() === false
+							&& $request->get_http_method() === Request::METHOD_GET
 							&& $request->get_body() === []
 							&& $request->get_headers() === [];
 					},
@@ -396,7 +396,7 @@ final class AI_Request_Sender_Test extends TestCase {
 					static function ( $request ) {
 						return $request instanceof Request
 							&& $request->get_action_path() === '/usage/free-usages'
-							&& $request->is_post() === false
+							&& $request->get_http_method() === Request::METHOD_GET
 							&& $request->get_body() === []
 							&& $request->get_headers() === [];
 					},

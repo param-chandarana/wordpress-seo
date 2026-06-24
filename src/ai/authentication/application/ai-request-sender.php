@@ -131,7 +131,7 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	 */
 	public function get_usage( Usage_Parameters $parameters ): Response {
 		$action_path = $parameters->is_free() ? '/usage/free-usages' : '/usage/' . $parameters->get_period();
-		$request     = new Request( $action_path, [], [], false );
+		$request     = new Request( $action_path, [], [], Request::METHOD_GET );
 
 		return $this->send( $request, $parameters->get_user() );
 	}

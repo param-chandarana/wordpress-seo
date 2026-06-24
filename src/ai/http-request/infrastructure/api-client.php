@@ -59,7 +59,7 @@ class API_Client implements API_Client_Interface {
 				$response = \wp_remote_get( $url, $arguments );
 				break;
 			case Request::METHOD_DELETE:
-				$response = \wp_remote_request( $url . $action_path, \array_merge( $arguments, [ 'method' => 'DELETE' ] ) );
+				$response = \wp_remote_request( $url, \array_merge( $arguments, [ 'method' => 'DELETE' ] ) );
 				break;
 			default:
 				// Defensive: the Request constructor already validates the method, so we should never reach this branch.

@@ -116,7 +116,7 @@ class Request {
 			$this->action_path,
 			$this->body,
 			\array_merge( $this->headers, $headers ),
-			$this->is_post,
+			$this->http_method,
 		);
 	}
 }
