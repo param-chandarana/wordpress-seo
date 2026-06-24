@@ -8,6 +8,7 @@ use Brain\Monkey\Functions;
 use Mockery;
 use WP_User;
 use Yoast\WP\SEO\AI\Authentication\Domain\Exceptions\Auth_Strategy_Unavailable_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Consent_Required_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Internal_Server_Error_Exception;
@@ -340,8 +341,62 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 	}
 
 	/**
-	 * A plain 403 (no insufficient_scope marker) propagates unchanged as a Forbidden_Exception so the
-	 * caller revokes consent, exactly as on the legacy wire.
+	 * A 403 whose message indicates consent is required is classified as Consent_Required_Exception so
+	 * the sender skips the fallback and the caller can clear local consent and re-prompt. yoast-ai's
+	 * consent gate carries no error_code or challenge, so the free-text message is the only signal.
+	 *
+	 * @covers ::send
+	 * @covers ::is_consent_required
+	 *
+	 * @return void
+	 */
+	public function test_send_throws_consent_required(): void {
+		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					403,
+					[],
+					[ 'message' => 'The consent of the user is required to perform this action' ],
+				),
+			);
+		$this->myyoast_client->shouldNotReceive( 'clear_site_token' );
+
+		try {
+			$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+			$this->fail( 'Expected Consent_Required_Exception.' );
+		}
+		catch ( Consent_Required_Exception $exception ) {
+			$this->assertSame( 'CONSENT_REQUIRED', $exception->get_error_identifier() );
+		}
+	}
+
+	/**
+	 * The insufficient_scope branch is checked before the consent message, so a 403 that both carries
+	 * the scope challenge and happens to mention consent is classified as a scope failure, never consent.
+	 *
+	 * @covers ::send
+	 *
+	 * @return void
+	 */
+	public function test_send_prefers_insufficient_scope_over_consent(): void {
+		$this->myyoast_client->expects( 'get_site_token' )->andReturn( $this->token_set );
+		$this->myyoast_client->expects( 'authenticated_request' )
+			->andReturn(
+				new HTTP_Response(
+					403,
+					[ 'www-authenticate' => 'Bearer error="insufficient_scope"' ],
+					[ 'message' => 'consent or scope problem' ],
+				),
+			);
+
+		$this->expectException( Insufficient_Scope_Exception::class );
+		$this->instance->send( new Request( '/openai/suggestions/seo-title' ), $this->user );
+	}
+
+	/**
+	 * A plain 403 (neither an insufficient_scope marker nor a consent message) propagates unchanged as
+	 * a Forbidden_Exception; the sender leaves it fallback-eligible, exactly as on the legacy wire.
 	 *
 	 * @covers ::send
 	 *
