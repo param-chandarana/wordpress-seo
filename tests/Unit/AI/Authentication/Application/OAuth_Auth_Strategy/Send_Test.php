@@ -109,7 +109,7 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 			)
 			->andReturn( new HTTP_Response( 200, [], '' ) );
 
-		$this->instance->send( new Request( '/usage/free-usages', [], [], false ), $this->user );
+		$this->instance->send( new Request( '/usage/free-usages', [], [], Request::METHOD_GET ), $this->user );
 	}
 
 	/**
@@ -136,7 +136,7 @@ final class Send_Test extends Abstract_OAuth_Auth_Strategy_Test {
 			)
 			->andReturn( new HTTP_Response( 200, [], '' ) );
 
-		$this->instance->send( new Request( '/usage/free-usages?plan=free', [], [], false ), $this->user );
+		$this->instance->send( new Request( '/usage/free-usages?plan=free', [], [], Request::METHOD_GET ), $this->user );
 	}
 
 	/**
