@@ -39,11 +39,11 @@ body.toplevel_page_wpseo_dashboard {
 		margin-top: 0;
 	}
 
-	.yoast-webinar-dashboard .notice-dismiss:before{
-		@apply yst-top-3 yst-right-3 yst-absolute;
+	.notice-dismiss {
+		@apply yst-top-3 yst-right-3 yst-p-0;
 	}
 
-	.yoast-webinar-dashboard .notice-dismiss:before, .yoast-general-page-notice .notice-dismiss:before {
+	.notice-dismiss:before {
 		background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%2394A3B8' class='yst-h-5 yst-w-5' role='img'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'></path></svg>") no-repeat center;
 		color:transparent;
 		background-size: 20px;
@@ -72,10 +72,6 @@ body.toplevel_page_wpseo_dashboard {
 
 	.yoast-webinar-dashboard .notice-yoast__container {
 		padding: 0;
-	}
-
-	.yoast-webinar-dashboard .notice-dismiss {
-		@apply yst-p-3
 	}
 
 	.notice-yoast__header {
