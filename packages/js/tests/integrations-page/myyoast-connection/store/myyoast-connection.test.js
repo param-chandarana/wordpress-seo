@@ -141,6 +141,7 @@ describe( "selectors", () => {
 			actionInFlight: "connect",
 			actionError: { errorCode: "boom" },
 			pendingCallbackOutcome: { kind: "success", key: "connect_success" },
+			linkParams: { php_version: "8.2" },
 		},
 	};
 
@@ -166,6 +167,14 @@ describe( "selectors", () => {
 
 	it( "selectMyyoastConnectionPendingCallbackOutcome returns the pending outcome", () => {
 		expect( myyoastConnectionSelectors.selectMyyoastConnectionPendingCallbackOutcome( state ) ).toEqual( { kind: "success", key: "connect_success" } );
+	} );
+
+	it( "selectMyyoastConnectionLinkParams returns the link params", () => {
+		expect( myyoastConnectionSelectors.selectMyyoastConnectionLinkParams( state ) ).toEqual( { php_version: "8.2" } );
+	} );
+
+	it( "selectMyyoastConnectionLinkParams falls back to an empty object when absent", () => {
+		expect( myyoastConnectionSelectors.selectMyyoastConnectionLinkParams( {} ) ).toEqual( {} );
 	} );
 
 	describe( "selectHasMyyoastConnection", () => {

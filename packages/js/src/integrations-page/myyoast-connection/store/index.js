@@ -64,6 +64,7 @@ export const registerMyyoastStore = () => {
 				status: transformStatus( data.initialStatus ),
 				profileUrl: data.profileUrl || "",
 				pendingCallbackOutcome: data.callbackOutcome || null,
+				linkParams: data.linkParams || {},
 			},
 		},
 	} ) );

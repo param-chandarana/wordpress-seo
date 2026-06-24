@@ -5,6 +5,7 @@ namespace Yoast\WP\SEO\Tests\Unit\MyYoast_Client\User_Interface;
 use Brain\Monkey;
 use Mockery;
 use Yoast\WP\SEO\Conditionals\MyYoast_Connection_Conditional;
+use Yoast\WP\SEO\Helpers\Short_Link_Helper;
 use Yoast\WP\SEO\MyYoast_Client\Application\Callback_Outcome;
 use Yoast\WP\SEO\MyYoast_Client\Application\OAuth_Callback_Handler;
 use Yoast\WP\SEO\MyYoast_Client\User_Interface\Integrations_Page_Script_Data;
@@ -40,6 +41,13 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 	private $callback_handler;
 
 	/**
+	 * The short-link helper mock.
+	 *
+	 * @var Short_Link_Helper|Mockery\MockInterface
+	 */
+	private $short_link_helper;
+
+	/**
 	 * The instance under test.
 	 *
 	 * @var Integrations_Page_Script_Data
@@ -57,10 +65,12 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->status_presenter               = Mockery::mock( Status_Presenter::class );
 		$this->myyoast_connection_conditional = Mockery::mock( MyYoast_Connection_Conditional::class );
 		$this->callback_handler               = Mockery::mock( OAuth_Callback_Handler::class );
+		$this->short_link_helper              = Mockery::mock( Short_Link_Helper::class );
 		$this->instance                       = new Integrations_Page_Script_Data(
 			$this->status_presenter,
 			$this->myyoast_connection_conditional,
 			$this->callback_handler,
+			$this->short_link_helper,
 		);
 	}
 
@@ -91,6 +101,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 42 )->andReturn( null );
+		$this->short_link_helper->shouldReceive( 'get_query_params' )->once()->andReturn( [ 'php_version' => '8.2' ] );
 
 		$result = $this->instance->present();
 
@@ -98,6 +109,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->assertSame( $status, $result['initialStatus'] );
 		$this->assertSame( 'https://example.com/wp-admin/profile.php', $result['profileUrl'] );
 		$this->assertNull( $result['callbackOutcome'] );
+		$this->assertSame( [ 'php_version' => '8.2' ], $result['linkParams'] );
 	}
 
 	/**
@@ -125,6 +137,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( Callback_Outcome::success() );
+		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );
 
 		$result = $this->instance->present();
 
@@ -169,6 +182,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( $outcome );
+		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );
 
 		$result = $this->instance->present();
 
@@ -220,6 +234,7 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 0 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 0 )->andReturn( null );
+		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );
 
 		$result = $this->instance->present();
 

@@ -23,6 +23,7 @@ export const getInitialMyyoastConnectionState = () => ( {
 	actionInFlight: null,
 	actionError: null,
 	pendingCallbackOutcome: null,
+	linkParams: {},
 } );
 
 const DEFAULT_STATUS = {
@@ -219,6 +220,7 @@ export const myyoastConnectionSelectors = {
 	selectMyyoastConnectionActionInFlight: state => get( state, "myyoastConnection.actionInFlight", null ),
 	selectMyyoastConnectionActionError: state => get( state, "myyoastConnection.actionError", null ),
 	selectMyyoastConnectionPendingCallbackOutcome: state => get( state, "myyoastConnection.pendingCallbackOutcome", null ),
+	selectMyyoastConnectionLinkParams: state => get( state, "myyoastConnection.linkParams", {} ),
 	selectHasMyyoastConnection: state => get( state, "myyoastConnection.status", null ) !== null,
 };
 
