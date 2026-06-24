@@ -9,6 +9,8 @@ use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Outline_Parameters;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Consent_Required_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
@@ -139,6 +141,10 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	/**
 	 * Sends an authenticated AI request, falling back to the secondary strategy on persistent failure.
 	 *
+	 * The fallback is only tried for failures that mean the primary strategy could not authenticate
+	 * the request; an authoritative 403 from the service (consent revoked or insufficient scope)
+	 * propagates to the caller instead — see {@see self::is_fallback_eligible()}.
+	 *
 	 * Kept public for backward compatibility — callers that have a pre-built Request may dispatch it
 	 * directly. New call sites should prefer the named methods above.
 	 *
@@ -152,6 +158,13 @@ class AI_Request_Sender implements LoggerAwareInterface {
 			return $this->primary->send( $request, $user );
 		}
 		catch ( Remote_Request_Exception $exception ) {
+			if ( ! $this->is_fallback_eligible( $exception ) ) {
+				$this->logger->warning(
+					'Primary AI auth strategy failed ({error_id}, HTTP {status}: {message}); the failure is not recoverable by the fallback, propagating to the caller.',
+					$this->error_context( $exception ),
+				);
+				throw $exception;
+			}
 			if ( $this->fallback === null ) {
 				throw $exception;
 			}
@@ -174,6 +187,35 @@ class AI_Request_Sender implements LoggerAwareInterface {
 			$this->logger->debug( 'Secondary AI auth strategy succeeded after primary failure.' );
 			return $response;
 		}
+	}
+
+	/**
+	 * Decides whether a primary-strategy failure may be retried via the fallback strategy.
+	 *
+	 * The fallback exists to recover from a primary strategy that could not *authenticate* the
+	 * request — a missing/expired token, a transport failure, an unavailable strategy. It must not
+	 * fire on an authoritative answer the service gave about this user, because the fallback talks to
+	 * the same service for the same user and would either get the same answer or, worse, fail for an
+	 * unrelated reason and mask the real one.
+	 *
+	 * Not all 403s are equal, so only the two that the OAuth strategy has positively classified are
+	 * blocked here: {@see Consent_Required_Exception} (the caller clears local consent and re-prompts)
+	 * and {@see Insufficient_Scope_Exception} (a token/deployment problem the caller surfaces
+	 * untouched). A plain {@see \Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception}
+	 * stays fallback-eligible: it may be an access-forbidden case the legacy strategy can still serve.
+	 *
+	 * @param Remote_Request_Exception $exception The failure thrown by the primary strategy.
+	 *
+	 * @return bool True when the fallback may be tried, false when the failure must propagate.
+	 */
+	private function is_fallback_eligible( Remote_Request_Exception $exception ): bool {
+		if ( $exception instanceof Consent_Required_Exception ) {
+			return false;
+		}
+		if ( $exception instanceof Insufficient_Scope_Exception ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**

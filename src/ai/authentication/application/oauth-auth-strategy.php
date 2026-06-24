@@ -9,6 +9,7 @@ use WPSEO_Utils;
 use Yoast\WP\SEO\AI\Authentication\Domain\Exceptions\Auth_Strategy_Unavailable_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Application\Response_Validator;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Bad_Request_Exception;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Consent_Required_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Remote_Request_Exception;
@@ -92,6 +93,7 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 * @throws WP_Request_Exception                On transport failure, matching the error identifier the legacy Token path reports.
 	 * @throws Bad_Request_Exception               When the status doesn't match a more specific exception.
 	 * @throws Insufficient_Scope_Exception        When the response is a 403 insufficient_scope, so callers can keep consent untouched.
+	 * @throws Consent_Required_Exception          When the response is a 403 whose message indicates consent is required, so the sender skips the fallback and the caller can re-prompt.
 	 * @throws Forbidden_Exception                 When the response is any other 403; callers revoke consent, same as the legacy path.
 	 * @throws Unauthorized_Exception              When the response is a 401 (the cached site token is cleared only when the challenge reports `invalid_token`).
 	 * @throws Remote_Request_Exception            When MyYoast_Client::authenticated_request throws for any reason not covered above, including unexpected HTTP responses.
@@ -156,19 +158,31 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 			}
 			throw $exception;
 		} catch ( Forbidden_Exception $exception ) {
-			if ( ! $this->is_insufficient_scope( $exception ) ) {
-				throw $exception;
+			if ( $this->is_insufficient_scope( $exception ) ) {
+				$this->logger->warning( 'OAuth send: yoast-ai returned insufficient_scope.' );
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
+				throw new Insufficient_Scope_Exception(
+					'INSUFFICIENT_SCOPE',
+					$exception->getCode(),
+					'INSUFFICIENT_SCOPE',
+					$exception,
+					$exception->get_response_headers(),
+				);
+				// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
-			$this->logger->warning( 'OAuth send: yoast-ai returned insufficient_scope.' );
-			// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
-			throw new Insufficient_Scope_Exception(
-				'INSUFFICIENT_SCOPE',
-				$exception->getCode(),
-				'INSUFFICIENT_SCOPE',
-				$exception,
-				$exception->get_response_headers(),
-			);
-			// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			if ( $this->is_consent_required( $exception ) ) {
+				$this->logger->warning( 'OAuth send: yoast-ai requires user consent.' );
+				// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- false positive.
+				throw new Consent_Required_Exception(
+					'CONSENT_REQUIRED',
+					$exception->getCode(),
+					'CONSENT_REQUIRED',
+					$exception,
+					$exception->get_response_headers(),
+				);
+				// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			}
+			throw $exception;
 		} catch ( Remote_Request_Exception $exception ) {
 			$this->logger->warning(
 				'OAuth send: remote request failed ({error_code}: {message}); rethrowing.',
@@ -227,6 +241,23 @@ class OAuth_Auth_Strategy implements Auth_Strategy_Interface, LoggerAwareInterfa
 	 */
 	private function is_insufficient_scope( Forbidden_Exception $exception ): bool {
 		return ( $this->error_code( $exception ) === 'insufficient_scope' );
+	}
+
+	/**
+	 * Whether the forbidden response means the user's consent is required.
+	 *
+	 * The yoast-ai consent gate returns a 403 carrying neither an `error_code` nor a
+	 * `WWW-Authenticate` challenge — only the free-text message "The consent of the user is required
+	 * to perform this action". With no machine-readable discriminator available, the message is the
+	 * only signal, so this matches the word "consent" case-insensitively. The check runs only after
+	 * the insufficient_scope branch, so a scope failure is never misread as a consent failure.
+	 *
+	 * @param Forbidden_Exception $exception The exception to inspect.
+	 *
+	 * @return bool True if the response indicates consent is required.
+	 */
+	private function is_consent_required( Forbidden_Exception $exception ): bool {
+		return ( \stripos( $exception->getMessage(), 'consent' ) !== false );
 	}
 
 	/**

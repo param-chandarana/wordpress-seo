@@ -12,12 +12,14 @@ use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Outline_Parameters;
 use Yoast\WP\SEO\AI\Content_Planner\Domain\Content_Suggestion_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Suggestions_Parameters;
 use Yoast\WP\SEO\AI\Generator\Domain\Usage_Parameters;
+use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Consent_Required_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Forbidden_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Insufficient_Scope_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Exceptions\Unauthorized_Exception;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Request;
 use Yoast\WP\SEO\AI\HTTP_Request\Domain\Response;
 use Yoast\WP\SEO\Tests\Unit\TestCase;
+use YoastSEO_Vendor\Psr\Log\LoggerInterface;
 
 /**
  * Tests for AI_Request_Sender.
@@ -158,28 +160,52 @@ final class AI_Request_Sender_Test extends TestCase {
 	}
 
 	/**
-	 * Insufficient_Scope_Exception is fallback-eligible: the sender carries no OAuth-specific
-	 * knowledge, so it falls back to the secondary strategy like any Remote_Request_Exception.
+	 * A 403 the OAuth strategy classified as insufficient_scope is an authoritative answer about this
+	 * token, not an authentication failure the fallback can recover from. The fallback must be skipped
+	 * and the exception must propagate untouched so the caller can treat it as a token/deployment problem.
 	 *
 	 * @covers ::send
+	 * @covers ::is_fallback_eligible
 	 *
 	 * @return void
 	 */
-	public function test_send_falls_back_on_insufficient_scope(): void {
-		$fallback_response = new Response( '{}', 200, 'OK' );
-
+	public function test_send_does_not_fall_back_on_insufficient_scope(): void {
 		$this->primary->expects( 'send' )->andThrow( new Insufficient_Scope_Exception( 'INSUFFICIENT_SCOPE', 403, 'INSUFFICIENT_SCOPE' ) );
-		$this->fallback->expects( 'send' )->andReturn( $fallback_response );
+		$this->fallback->shouldNotReceive( 'send' );
 
 		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
 
-		$this->assertSame( $fallback_response, $sender->get_suggestions( $this->suggestions_parameters() ) );
+		$this->expectException( Insufficient_Scope_Exception::class );
+		$sender->get_suggestions( $this->suggestions_parameters() );
 	}
 
 	/**
-	 * A plain Forbidden_Exception still falls back when a fallback exists.
+	 * A 403 the OAuth strategy classified as consent-required is an authoritative answer about this
+	 * user, not an authentication failure. The fallback talks to the same service for the same user,
+	 * so trying it is pointless and can mask the real signal with an unrelated failure. The
+	 * Consent_Required_Exception must propagate so the caller can clear local consent and re-prompt.
 	 *
 	 * @covers ::send
+	 * @covers ::is_fallback_eligible
+	 *
+	 * @return void
+	 */
+	public function test_send_does_not_fall_back_on_consent_required(): void {
+		$this->primary->expects( 'send' )->andThrow( new Consent_Required_Exception( 'CONSENT_REQUIRED', 403, 'CONSENT_REQUIRED' ) );
+		$this->fallback->shouldNotReceive( 'send' );
+
+		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
+
+		$this->expectException( Consent_Required_Exception::class );
+		$sender->get_suggestions( $this->suggestions_parameters() );
+	}
+
+	/**
+	 * A plain Forbidden_Exception is not one of the classified 403s, so it remains fallback-eligible:
+	 * it may be an access-forbidden case the legacy strategy can still serve.
+	 *
+	 * @covers ::send
+	 * @covers ::is_fallback_eligible
 	 *
 	 * @return void
 	 */
@@ -192,6 +218,36 @@ final class AI_Request_Sender_Test extends TestCase {
 		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
 
 		$this->assertSame( $fallback_response, $sender->get_suggestions( $this->suggestions_parameters() ) );
+	}
+
+	/**
+	 * A non-fallback-eligible failure is logged with the propagation message and never reaches the
+	 * fallback, even when one is configured.
+	 *
+	 * @covers ::send
+	 * @covers ::is_fallback_eligible
+	 *
+	 * @return void
+	 */
+	public function test_send_logs_when_failure_is_not_fallback_eligible(): void {
+		$this->primary->expects( 'send' )->andThrow( new Consent_Required_Exception( 'CONSENT_REQUIRED', 403, 'CONSENT_REQUIRED' ) );
+		$this->fallback->shouldNotReceive( 'send' );
+
+		$logger = Mockery::mock( LoggerInterface::class );
+		$logger->expects( 'warning' )->once()->with(
+			'Primary AI auth strategy failed ({error_id}, HTTP {status}: {message}); the failure is not recoverable by the fallback, propagating to the caller.',
+			[
+				'error_id' => 'CONSENT_REQUIRED',
+				'status'   => 403,
+				'message'  => 'CONSENT_REQUIRED',
+			],
+		);
+
+		$sender = new AI_Request_Sender( $this->primary, $this->fallback );
+		$sender->setLogger( $logger );
+
+		$this->expectException( Consent_Required_Exception::class );
+		$sender->get_suggestions( $this->suggestions_parameters() );
 	}
 
 	/**
