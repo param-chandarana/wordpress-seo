@@ -139,6 +139,34 @@ class AI_Request_Sender implements LoggerAwareInterface {
 	}
 
 	/**
+	 * Records the user's consent on the AI service.
+	 *
+	 * The strategy identifies the WP user to the service (the OAuth path injects `user_id` into the
+	 * POST body), so no body is built here.
+	 *
+	 * @param WP_User $user The WP user granting consent.
+	 *
+	 * @return Response The parsed response.
+	 */
+	public function grant_consent( WP_User $user ): Response {
+		return $this->send( new Request( '/user/consent', [], [], Request::METHOD_POST ), $user );
+	}
+
+	/**
+	 * Revokes the user's consent on the AI service.
+	 *
+	 * The strategy identifies the WP user to the service (the OAuth path injects `user_id` into the
+	 * query string for DELETE requests).
+	 *
+	 * @param WP_User $user The WP user revoking consent.
+	 *
+	 * @return Response The parsed response.
+	 */
+	public function revoke_consent( WP_User $user ): Response {
+		return $this->send( new Request( '/user/consent', [], [], Request::METHOD_DELETE ), $user );
+	}
+
+	/**
 	 * Sends an authenticated AI request, falling back to the secondary strategy on persistent failure.
 	 *
 	 * The fallback is only tried for failures that mean the primary strategy could not authenticate
