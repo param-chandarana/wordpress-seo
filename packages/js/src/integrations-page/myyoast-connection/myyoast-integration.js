@@ -1,11 +1,12 @@
-import ArrowNarrowRightIcon from "@heroicons/react/outline/ArrowNarrowRightIcon";
+import ArrowSmRightIcon from "@heroicons/react/solid/ArrowSmRightIcon";
 import CheckIcon from "@heroicons/react/solid/CheckIcon";
 import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
 import ExclamationIcon from "@heroicons/react/solid/ExclamationIcon";
 import { dispatch, select, useSelect } from "@wordpress/data";
 import { useCallback, useEffect, useId, useRef, useState } from "@wordpress/element";
 import { __, _n, sprintf } from "@wordpress/i18n";
-import { Alert, Button, Notifications, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
+import { addQueryArgs } from "@wordpress/url";
+import { Alert, Button, Link, Notifications, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
 import PropTypes from "prop-types";
 import { ReactComponent as MyYoastLogo } from "../../../images/myyoast-logo.svg";
 import { safeCreateInterpolateElement } from "../../helpers/i18n";
@@ -13,8 +14,7 @@ import { MyyoastConnectionDisconnectModal } from "./myyoast-disconnect-modal";
 import { MYYOAST_STORE_NAME } from "./constants";
 import { Card } from "../tailwind-components/card";
 
-// Placeholder until the final MyYoast integrations article URL is provided.
-const LEARN_MORE_LINK = "https://yoa.st/myyoast-connection";
+const LEARN_MORE_LINK = "https://yoa.st/integrations-myyoast";
 
 /**
  * Resolves the user-facing message for a machine code the backend emits
@@ -254,6 +254,10 @@ export const MyyoastIntegration = () => {
 	const status = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionStatus(), [] );
 	const actionInFlight = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
 	const pendingCallbackOutcome = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
+	// UTM/tracking params localized by the page; appended to outbound links so
+	// they carry the same attribution as the other integration cards' links.
+	const linkParams = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionLinkParams(), [] );
+	const learnMoreLink = addQueryArgs( LEARN_MORE_LINK, linkParams );
 	// The OAuth flow outcome (connect/verify/disconnect/refresh and the callback
 	// return) surfaces as a transient toast. Each new outcome carries a fresh id
 	// so the toast remounts and re-animates even when the message is unchanged.
@@ -367,19 +371,24 @@ export const MyyoastIntegration = () => {
 								{ strong: <strong /> }
 							) }
 						</h4>
-						<p className="yst-text-slate-600">
+						<p>
 							{ __( "Connect your site to MyYoast so Yoast AI works even when your site is offline, behind a firewall, or with the REST API disabled.", "wordpress-seo" ) }
 						</p>
 
-						<a
-							href={ LEARN_MORE_LINK }
+						<Link
+							href={ learnMoreLink }
+							className="yst-flex yst-items-center yst-no-underline yst-font-medium"
 							target="_blank"
-							rel="noopener noreferrer"
-							className="yst-inline-flex yst-items-center yst-gap-1 yst-font-medium yst-text-primary-500 yst-no-underline"
 						>
 							{ __( "Learn more", "wordpress-seo" ) }
-							<ArrowNarrowRightIcon className="yst-h-4 yst-w-4" />
-						</a>
+							<span className="yst-sr-only">
+								{
+									/* translators: Hidden accessibility text. */
+									__( "(Opens in a new browser tab)", "wordpress-seo" )
+								}
+							</span>
+							<ArrowSmRightIcon className="yst-h-4 yst-w-4 yst-ms-1 yst-icon-rtl" />
+						</Link>
 
 						{ ! status.isProvisioned && (
 							<Alert variant="warning">
