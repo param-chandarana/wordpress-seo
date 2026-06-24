@@ -137,7 +137,6 @@ describe( "selectors", () => {
 	const state = {
 		[ MYYOAST_CONNECTION_NAME ]: {
 			status,
-			profileUrl: "https://my.yoast.com/profile",
 			actionInFlight: "connect",
 			actionError: { errorCode: "boom" },
 			pendingCallbackOutcome: { kind: "success", key: "connect_success" },
@@ -153,16 +152,8 @@ describe( "selectors", () => {
 		expect( myyoastConnectionSelectors.selectMyyoastConnectionStatus( {} ) ).toEqual( transformStatus( null ) );
 	} );
 
-	it( "selectMyyoastConnectionProfileUrl returns the profile URL", () => {
-		expect( myyoastConnectionSelectors.selectMyyoastConnectionProfileUrl( state ) ).toBe( "https://my.yoast.com/profile" );
-	} );
-
 	it( "selectMyyoastConnectionActionInFlight returns the in-flight action", () => {
 		expect( myyoastConnectionSelectors.selectMyyoastConnectionActionInFlight( state ) ).toBe( "connect" );
-	} );
-
-	it( "selectMyyoastConnectionActionError returns the action error", () => {
-		expect( myyoastConnectionSelectors.selectMyyoastConnectionActionError( state ) ).toEqual( { errorCode: "boom" } );
 	} );
 
 	it( "selectMyyoastConnectionPendingCallbackOutcome returns the pending outcome", () => {
@@ -175,16 +166,6 @@ describe( "selectors", () => {
 
 	it( "selectMyyoastConnectionLinkParams falls back to an empty object when absent", () => {
 		expect( myyoastConnectionSelectors.selectMyyoastConnectionLinkParams( {} ) ).toEqual( {} );
-	} );
-
-	describe( "selectHasMyyoastConnection", () => {
-		it( "is true when a status is present", () => {
-			expect( myyoastConnectionSelectors.selectHasMyyoastConnection( state ) ).toBe( true );
-		} );
-
-		it( "is false when the status is null", () => {
-			expect( myyoastConnectionSelectors.selectHasMyyoastConnection( { [ MYYOAST_CONNECTION_NAME ]: { status: null } } ) ).toBe( false );
-		} );
 	} );
 } );
 

@@ -96,9 +96,6 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->myyoast_connection_conditional->shouldReceive( 'is_met' )->andReturn( true );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $status );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'profile.php' )
-			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 42 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 42 )->andReturn( null );
 		$this->short_link_helper->shouldReceive( 'get_query_params' )->once()->andReturn( [ 'php_version' => '8.2' ] );
@@ -107,7 +104,6 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 
 		$this->assertIsArray( $result );
 		$this->assertSame( $status, $result['initialStatus'] );
-		$this->assertSame( 'https://example.com/wp-admin/profile.php', $result['profileUrl'] );
 		$this->assertNull( $result['callbackOutcome'] );
 		$this->assertSame( [ 'php_version' => '8.2' ], $result['linkParams'] );
 	}
@@ -132,9 +128,6 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->myyoast_connection_conditional->shouldReceive( 'is_met' )->andReturn( true );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $status );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'profile.php' )
-			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( Callback_Outcome::success() );
 		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );
@@ -177,9 +170,6 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->myyoast_connection_conditional->shouldReceive( 'is_met' )->andReturn( true );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $status );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'profile.php' )
-			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 7 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 7 )->andReturn( $outcome );
 		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );
@@ -229,9 +219,6 @@ final class Integrations_Page_Script_Data_Test extends TestCase {
 		$this->myyoast_connection_conditional->shouldReceive( 'is_met' )->andReturn( true );
 		$this->status_presenter->shouldReceive( 'present' )->andReturn( $status );
 
-		Monkey\Functions\expect( 'admin_url' )
-			->with( 'profile.php' )
-			->andReturn( 'https://example.com/wp-admin/profile.php' );
 		Monkey\Functions\expect( 'get_current_user_id' )->andReturn( 0 );
 		$this->callback_handler->shouldReceive( 'consume_outcome' )->once()->with( 0 )->andReturn( null );
 		$this->short_link_helper->shouldReceive( 'get_query_params' )->andReturn( [] );

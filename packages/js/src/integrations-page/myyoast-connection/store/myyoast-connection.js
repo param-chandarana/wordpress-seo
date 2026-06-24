@@ -19,7 +19,6 @@ const ENDPOINTS = {
  */
 export const getInitialMyyoastConnectionState = () => ( {
 	status: null,
-	profileUrl: "",
 	actionInFlight: null,
 	actionError: null,
 	pendingCallbackOutcome: null,
@@ -216,12 +215,9 @@ export const myyoastConnectionControls = {
 
 export const myyoastConnectionSelectors = {
 	selectMyyoastConnectionStatus: state => get( state, "myyoastConnection.status", DEFAULT_STATUS ) ?? DEFAULT_STATUS,
-	selectMyyoastConnectionProfileUrl: state => get( state, "myyoastConnection.profileUrl", "" ),
 	selectMyyoastConnectionActionInFlight: state => get( state, "myyoastConnection.actionInFlight", null ),
-	selectMyyoastConnectionActionError: state => get( state, "myyoastConnection.actionError", null ),
 	selectMyyoastConnectionPendingCallbackOutcome: state => get( state, "myyoastConnection.pendingCallbackOutcome", null ),
 	selectMyyoastConnectionLinkParams: state => get( state, "myyoastConnection.linkParams", {} ),
-	selectHasMyyoastConnection: state => get( state, "myyoastConnection.status", null ) !== null,
 };
 
 export const myyoastConnectionReducer = slice.reducer;

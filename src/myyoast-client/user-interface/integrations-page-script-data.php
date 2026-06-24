@@ -74,7 +74,7 @@ class Integrations_Page_Script_Data {
 	 * callback finished for this user since the last time the Integrations page
 	 * was rendered, so the React app can surface a one-shot notification.
 	 *
-	 * @return array{initialStatus: array{is_provisioned: bool, is_registered: bool, registered_at: int|null, registered_at_iso: string|null, redirect_uris: array<int, array{uri: string, origin: string, is_verified: bool}>, redirect_uris_match: bool}, profileUrl: string, callbackOutcome: array{kind: string, key: string}|null, linkParams: array<string, string>}|null
+	 * @return array{initialStatus: array{is_provisioned: bool, is_registered: bool, registered_at: int|null, registered_at_iso: string|null, redirect_uris: array<int, array{uri: string, origin: string, is_verified: bool}>, redirect_uris_match: bool}, callbackOutcome: array{kind: string, key: string}|null, linkParams: array<string, string>}|null
 	 */
 	public function present(): ?array {
 		if ( ! $this->myyoast_connection_conditional->is_met() ) {
@@ -83,7 +83,6 @@ class Integrations_Page_Script_Data {
 
 		return [
 			'initialStatus'   => $this->status_presenter->present(),
-			'profileUrl'      => \admin_url( 'profile.php' ),
 			'callbackOutcome' => $this->consume_callback_outcome(),
 			'linkParams'      => $this->short_link_helper->get_query_params(),
 		];

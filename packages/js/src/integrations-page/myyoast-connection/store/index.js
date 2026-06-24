@@ -62,7 +62,6 @@ export const registerMyyoastStore = () => {
 		initialState: {
 			[ MYYOAST_CONNECTION_NAME ]: {
 				status: transformStatus( data.initialStatus ),
-				profileUrl: data.profileUrl || "",
 				pendingCallbackOutcome: data.callbackOutcome || null,
 				linkParams: data.linkParams || {},
 			},
