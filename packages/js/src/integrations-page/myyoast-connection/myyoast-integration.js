@@ -103,6 +103,11 @@ const ACTION_DISPATCHERS = {
 	disconnect: "disconnectMyyoastConnection",
 };
 
+// Sentinel returned by runAction when another action is already in flight. Not a
+// real backend failure — the action was deliberately dropped, so callers ignore
+// it rather than surfacing it as an error.
+const ACTION_IN_FLIGHT = "action_in_flight";
+
 /**
  * Resolves the user-facing message for a given error code.
  *
@@ -137,7 +142,7 @@ const runAction = async( actionName, body, options ) => {
 	// second action started while one is in flight (e.g. the mount-time status
 	// refresh overlapping a user click) would race on the shared status. Ignore it.
 	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
-		return { ok: false, errorCode: "action_in_flight" };
+		return { ok: false, errorCode: ACTION_IN_FLIGHT };
 	}
 	const store = dispatch( MYYOAST_STORE_NAME );
 	const result = await store[ ACTION_DISPATCHERS[ actionName ] ]( body );
@@ -312,6 +317,13 @@ export const MyyoastIntegration = () => {
 		// A failure still needs to be shown, so surface only that.
 		const result = await runAction( "connect", null, { silent: true } );
 		if ( ! result.ok ) {
+			// Another action was already running (e.g. a double-click before the
+			// button re-rendered as disabled). The first action stays in flight, so
+			// drop this one silently rather than flashing a spurious error.
+			if ( result.errorCode === ACTION_IN_FLIGHT ) {
+				setIsConnecting( false );
+				return;
+			}
 			const message = resolveErrorMessage( result.errorCode, result.details );
 			showFeedback( { variant: "error", message } );
 			setIsConnecting( false );
