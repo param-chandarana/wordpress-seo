@@ -315,7 +315,9 @@ class Management_Route implements Route_Interface, LoggerAwareInterface {
 
 		$user_id = \get_current_user_id();
 		if ( $user_id <= 0 ) {
-			return $this->error_response( 'invalid_user', null, 401 );
+			// Return HTTP 200 with the error_code in the body like every other failure here:
+			// api-fetch rejects non-2xx, which would mask invalid_user as a generic unexpected_error.
+			return $this->error_response( 'invalid_user' );
 		}
 
 		$return_url = $this->resolve_return_url( $request->get_param( 'return_url' ) );
