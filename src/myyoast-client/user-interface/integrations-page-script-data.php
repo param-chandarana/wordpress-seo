@@ -117,7 +117,7 @@ class Integrations_Page_Script_Data {
 	 * Maps a failed callback outcome to the front-end message key.
 	 *
 	 * Translates the neutral, native-OAuth outcome into the message keys the
-	 * integrations-page JS understands (see `buildMessages()` in
+	 * integrations-page JS understands (see `messageFor()` in
 	 * `myyoast-integration.js`). The same missing code means different things per
 	 * OAuth phase: a provider error other than `access_denied` is unexpected,
 	 * while a token-endpoint error other than `invalid_grant` is a generic token
