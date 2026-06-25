@@ -153,7 +153,7 @@ class Token_Manager implements Token_Manager_Interface {
 		}
 
 		// Delete the stored JWT tokens.
-		$this->clear_tokens( $user->ID );
+		$this->clear_tokens( $user_id );
 	}
 
 	/**
