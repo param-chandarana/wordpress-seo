@@ -302,8 +302,7 @@ class Token_Manager implements Token_Manager_Interface {
 	public function get_or_request_access_token( WP_User $user ): string {
 		// If the site URL has changed since callback URLs were registered, delete stale tokens.
 		if ( $this->have_callback_urls_changed( $user ) ) {
-			$this->user_helper->delete_meta( $user->ID, '_yoast_wpseo_ai_generator_access_jwt' );
-			$this->user_helper->delete_meta( $user->ID, '_yoast_wpseo_ai_generator_refresh_jwt' );
+			$this->clear_tokens( $user->ID );
 		}
 
 		$access_jwt = $this->user_helper->get_meta( $user->ID, '_yoast_wpseo_ai_generator_access_jwt', true );
