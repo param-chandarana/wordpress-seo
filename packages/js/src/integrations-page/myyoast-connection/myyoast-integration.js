@@ -7,7 +7,6 @@ import { useCallback, useEffect, useId, useRef, useState } from "@wordpress/elem
 import { __, _n, sprintf } from "@wordpress/i18n";
 import { addQueryArgs } from "@wordpress/url";
 import { Alert, Button, Link, Notifications, TooltipContainer, TooltipTrigger, TooltipWithContext, useSvgAria, useToggleState } from "@yoast/ui-library";
-import PropTypes from "prop-types";
 import { ReactComponent as MyYoastLogo } from "../../../images/myyoast-logo.svg";
 import { safeCreateInterpolateElement } from "../../helpers/i18n";
 import { MyyoastConnectionDisconnectModal } from "./myyoast-disconnect-modal";
@@ -242,11 +241,6 @@ const StatusFooter = ( { connectionLost, verificationNeeded } ) => {
 			<CheckIcon className={ `${ iconClass } yst-text-green-400` } { ...svgAriaProps } />
 		</p>
 	);
-};
-
-StatusFooter.propTypes = {
-	connectionLost: PropTypes.bool.isRequired,
-	verificationNeeded: PropTypes.bool.isRequired,
 };
 
 /**
