@@ -2,7 +2,7 @@ import ArrowSmRightIcon from "@heroicons/react/solid/ArrowSmRightIcon";
 import CheckIcon from "@heroicons/react/solid/CheckIcon";
 import ExclamationCircleIcon from "@heroicons/react/solid/ExclamationCircleIcon";
 import ExclamationIcon from "@heroicons/react/solid/ExclamationIcon";
-import { dispatch, select, useSelect } from "@wordpress/data";
+import { dispatch, select as wpSelect, useSelect } from "@wordpress/data";
 import { useCallback, useEffect, useId, useRef, useState } from "@wordpress/element";
 import { __, _n, sprintf } from "@wordpress/i18n";
 import { addQueryArgs } from "@wordpress/url";
@@ -207,7 +207,7 @@ const runAction = async( actionName, body, options ) => {
 	// Serialize actions: they all mutate the same server-side registration, so a
 	// second action started while one is in flight (e.g. the mount-time status
 	// refresh overlapping a user click) would race on the shared status. Ignore it.
-	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
+	if ( wpSelect( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
 		return { ok: false, errorCode: ACTION_IN_FLIGHT };
 	}
 	const store = dispatch( MYYOAST_STORE_NAME );
@@ -242,7 +242,7 @@ const runAction = async( actionName, body, options ) => {
  *                             is navigating away); false when we stay on the page.
  */
 const runAuthorize = async( onFeedback ) => {
-	if ( select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
+	if ( wpSelect( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight() ) {
 		return false;
 	}
 	const store = dispatch( MYYOAST_STORE_NAME );
@@ -321,12 +321,12 @@ const StatusFooter = ( { connectionLost, verificationNeeded } ) => {
  */
 // eslint-disable-next-line complexity
 export const MyyoastIntegration = () => {
-	const status = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionStatus(), [] );
-	const actionInFlight = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
-	const pendingCallbackOutcome = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
+	const status = useSelect( select => select( MYYOAST_STORE_NAME ).selectMyyoastConnectionStatus(), [] );
+	const actionInFlight = useSelect( select => select( MYYOAST_STORE_NAME ).selectMyyoastConnectionActionInFlight(), [] );
+	const pendingCallbackOutcome = useSelect( select => select( MYYOAST_STORE_NAME ).selectMyyoastConnectionPendingCallbackOutcome(), [] );
 	// UTM/tracking params localized by the page; appended to outbound links so
 	// they carry the same attribution as the other integration cards' links.
-	const linkParams = useSelect( s => s( MYYOAST_STORE_NAME ).selectMyyoastConnectionLinkParams(), [] );
+	const linkParams = useSelect( select => select( MYYOAST_STORE_NAME ).selectMyyoastConnectionLinkParams(), [] );
 	const learnMoreLink = addQueryArgs( LEARN_MORE_LINK, linkParams );
 	// The OAuth flow outcome (connect/verify/disconnect/refresh and the callback
 	// return) surfaces as a transient toast. Each new outcome carries a fresh id
