@@ -129,9 +129,20 @@ final class AI_Request_Sender_Test extends TestCase {
 	 * @return void
 	 */
 	public function test_send_rethrows_when_no_fallback(): void {
-		$this->primary->expects( 'send' )->andThrow( new Unauthorized_Exception( 'no-recovery', 401 ) );
+		$this->primary->expects( 'send' )->andThrow( new Unauthorized_Exception( 'no-recovery', 401, 'oauth-expired' ) );
+
+		$logger = Mockery::mock( LoggerInterface::class );
+		$logger->expects( 'warning' )->once()->with(
+			'Primary AI auth strategy failed ({error_id}, HTTP {status}: {message}); no fallback configured, giving up.',
+			[
+				'error_id' => 'oauth-expired',
+				'status'   => 401,
+				'message'  => 'no-recovery',
+			],
+		);
 
 		$sender = new AI_Request_Sender( $this->primary );
+		$sender->setLogger( $logger );
 
 		$this->expectException( Unauthorized_Exception::class );
 		$sender->get_suggestions( $this->suggestions_parameters() );
